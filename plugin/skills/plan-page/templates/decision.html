@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="ko" data-lavish-annotate="off">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TICKET 결정</title>
+<!-- plan-page decision template (RAL ticket 084 S6). Edit ONLY the JSON in #page-data and the <title>; the mechanics below are shared.
+     Question fields: w (group heading), id, t (title), type: radio | check | resolved, ctx (2-3 lines), detail: [[label, text], ...] (behind 자세히),
+     opts: [[value, label, description, recommended 0/1], ...], rev (optional Lavish revision id for new cards in a later round). -->
+<script type="application/json" data-lavish-revisions>
+[]
+</script>
+<script type="application/json" id="page-data">
+{
+  "title": "RAL NNN — 결정",
+  "ticket": "RAL NNN",
+  "round": "1라운드",
+  "record_to": "tickets/NNN-slug/q_questions.md",
+  "queue_key": "ralNNN-decisions-r1",
+  "lead": ["무엇을 정해야 하고, 정하면 무엇이 진행되는지 한두 문장."],
+  "questions": [
+    { "w": "결정", "id": "Q-1", "t": "질문 한 줄", "type": "radio",
+      "ctx": "두세 줄의 맥락.",
+      "detail": [["근거", "긴 설명은 여기에."]],
+      "opts": [["a", "권고안", "설명", 1], ["b", "대안", "", 0]] },
+    { "w": "이미 결정됨", "id": "Q-0", "t": "예전 라운드에서 답한 항목", "type": "resolved", "ctx": "기록된 결정 한 줄." }
+  ]
+}
+</script>
+<style>
+  :root {
+    --surface: #fcfcfb; --plane: #f4f4f1;
+    --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --ring: rgba(11,11,11,0.10);
+    --fill: #2a78d6; --fill-soft: rgba(42,120,214,0.10);
+    --good: #0ca30c; --warn: #b27a00; --crit: #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface: #1a1a19; --plane: #0d0d0d;
+      --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --ring: rgba(255,255,255,0.10);
+      --fill: #3987e5; --fill-soft: rgba(57,135,229,0.16);
+      --good: #3cc23c; --warn: #fab219; --crit: #e86161;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--plane); color: var(--ink); }
+  body { font: 15px/1.55 system-ui, -apple-system, "Noto Sans KR", sans-serif; }
+  .mono, code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.92em; }
+  main { max-width: 920px; margin: 0 auto; padding: 24px 16px 140px; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--ink-2); margin: 0 0 16px; }
+  .how { background: var(--surface); border: 1px solid var(--grid); border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; color: var(--ink-2); }
+  .how ol { margin: 6px 0 0; padding-left: 20px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 24px; }
+  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--grid); background: var(--surface); color: var(--ink); padding: 7px 12px; }
+  button.primary { background: var(--fill); border-color: var(--fill); color: #fff; font-weight: 600; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 28px 0 10px; }
+  .card { background: var(--surface); border: 1px solid var(--grid); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+  .card.done { border-color: var(--fill); }
+  .card.resolved { opacity: 0.75; }
+  .head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .qid { font-weight: 700; color: var(--fill); }
+  .qt { font-weight: 600; flex: 1 1 260px; min-width: 0; }
+  .state { font-size: 12px; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--grid); color: var(--muted); white-space: nowrap; }
+  .state.sel { color: var(--fill); border-color: var(--fill); }
+  .state.q { color: #fff; background: var(--good); border-color: var(--good); }
+  .state.chg { color: var(--warn); border-color: var(--warn); }
+  .ctx { color: var(--ink-2); margin: 6px 0 10px; }
+  details { margin: 0 0 10px; color: var(--ink-2); }
+  summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  details table { border-collapse: collapse; width: 100%; margin-top: 6px; font-size: 13.5px; }
+  details td, details th { border-top: 1px solid var(--grid); padding: 5px 6px; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+  .opts { display: grid; gap: 6px; }
+  .opt { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--grid); border-radius: 8px; cursor: pointer; }
+  .opt:has(input:checked) { border-color: var(--fill); background: var(--fill-soft); }
+  .opt input { margin-top: 4px; flex: none; }
+  .opt .l { min-width: 0; }
+  .opt .d { display: block; color: var(--ink-2); font-size: 13.5px; }
+  .rec { font-size: 11px; font-weight: 700; color: var(--good); border: 1px solid var(--good); border-radius: 4px; padding: 0 5px; margin-left: 6px; white-space: nowrap; }
+  textarea { width: 100%; margin-top: 8px; font: inherit; font-size: 14px; color: var(--ink); background: var(--plane); border: 1px solid var(--grid); border-radius: 8px; padding: 7px 9px; min-height: 38px; resize: vertical; }
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--grid); padding: 10px 16px; }
+  .bar .in { max-width: 920px; margin: 0 auto; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .meter { flex: 1 1 220px; min-width: 0; }
+  .meter .t { font-size: 13px; color: var(--ink-2); }
+  .track { height: 6px; background: var(--grid); border-radius: 99px; overflow: hidden; margin-top: 4px; }
+  .track > div { height: 100%; background: var(--fill); width: 0; transition: width .2s; }
+  #status { font-size: 13px; color: var(--ink-2); flex-basis: 100%; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title"></h1>
+  <p class="sub">원본: <span class="mono" id="recordTo"></span>. 이 페이지에서 고른 답은 그 파일의 각 "사용자 답" 칸에 원문 그대로 기록됩니다.</p>
+  <div id="lead"></div>
+
+  <div class="how">
+    <strong>사용법</strong>
+    <ol>
+      <li>각 카드에서 고르세요. 선택은 이 페이지 안에만 남고, 아직 에이전트에게 가지 않습니다.</li>
+      <li>바꾸고 싶은 점은 카드의 메모 칸에 적으세요. 메모만 적고 선택을 비워 두어도 됩니다.</li>
+      <li>아래 <strong>결정 대기열에 넣기</strong>를 누른 뒤, Lavish 상단의 <strong>Send</strong>로 보내세요. 일부만 답해도 됩니다.</li>
+    </ol>
+  </div>
+
+  <div class="toolbar">
+    <button type="button" id="fillRec">빈 카드를 권고안으로 채우기</button>
+    <button type="button" id="clearAll">모든 선택 지우기</button>
+  </div>
+
+  <div id="cards"></div>
+</main>
+
+<div class="bar">
+  <div class="in">
+    <div class="meter">
+      <div class="t" id="count">0 / 0 답함</div>
+      <div class="track"><div id="fill"></div></div>
+    </div>
+    <button type="button" class="primary" id="queueBtn" disabled>결정 대기열에 넣기</button>
+    <div id="status" role="status" aria-live="polite"></div>
+  </div>
+</div>
+
+<script>
+const P = JSON.parse(document.getElementById("page-data").textContent);
+const Q = P.questions;
+document.getElementById("title").textContent = P.title;
+document.getElementById("recordTo").textContent = P.record_to;
+for (const s of P.lead || []) { const p = document.createElement("p"); p.className = "sub"; p.textContent = s; document.getElementById("lead").append(p); }
+
+const open = Q.filter(q => q.type !== "resolved");
+let queuedSnapshot = null;
+
+function el(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v; else if (k === "text") e.textContent = v; else e.setAttribute(k, v);
+  }
+  for (const k of kids) if (k != null) e.append(k);
+  return e;
+}
+
+function render() {
+  const root = document.getElementById("cards");
+  let lastW = null;
+  for (const q of Q) {
+    if (q.w !== lastW) { root.append(el("h2", { text: q.w })); lastW = q.w; }
+    const card = el("section", { class: "card" + (q.type === "resolved" ? " resolved" : ""), id: "card-" + q.id });
+    if (q.rev) card.setAttribute("data-lavish-revision", q.rev);
+    const state = el("span", { class: "state", id: "st-" + q.id, text: q.type === "resolved" ? "결정됨" : "미답" });
+    card.append(el("div", { class: "head" }, el("span", { class: "qid", text: q.id }), el("span", { class: "qt", text: q.t }), state));
+    card.append(el("p", { class: "ctx", text: q.ctx }));
+    if (q.detail) {
+      const tb = el("table");
+      for (const [a, b] of q.detail) tb.append(el("tr", {}, el("th", { text: a }), el("td", { text: b })));
+      card.append(el("details", {}, el("summary", { text: "자세히" }), tb));
+    }
+    if (q.type !== "resolved") {
+      const opts = el("div", { class: "opts" });
+      for (const [v, label, desc, rec] of q.opts) {
+        const input = el("input", { type: q.type === "check" ? "checkbox" : "radio", name: q.id, value: v });
+        input.dataset.rec = rec ? "1" : "0";
+        input.dataset.label = label;
+        const l = el("span", { class: "l" }, label, rec ? el("span", { class: "rec", text: "권고" }) : null, desc ? el("span", { class: "d", text: desc }) : null);
+        opts.append(el("label", { class: "opt" }, input, l));
+      }
+      card.append(opts);
+      card.append(el("textarea", { name: q.id + "-note", rows: "1", placeholder: "메모 (선택): 수정·조건·질문" }));
+    }
+    root.append(card);
+  }
+  root.addEventListener("change", refresh);
+  root.addEventListener("input", refresh);
+}
+
+function answerOf(q) {
+  const picked = [...document.querySelectorAll(`input[name="${q.id}"]:checked`)];
+  const note = document.querySelector(`textarea[name="${q.id}-note"]`).value.trim();
+  const touched = picked.length > 0 || note.length > 0 || (q.type === "check" && q._touched);
+  if (!touched) return null;
+  const all = [...document.querySelectorAll(`input[name="${q.id}"]`)];
+  const recSet = all.filter(i => i.dataset.rec === "1").map(i => i.value).sort().join(",");
+  const pickSet = picked.map(i => i.value).sort().join(",");
+  return {
+    id: q.id,
+    title: q.t,
+    choice: picked.map(i => i.value + " = " + i.dataset.label),
+    matches_recommendation: pickSet === recSet,
+    note: note || null
+  };
+}
+
+function refresh(ev) {
+  if (ev && ev.target && ev.target.name) {
+    const q = Q.find(x => x.id === ev.target.name);
+    if (q && q.type === "check") q._touched = true;
+  }
+  let n = 0;
+  const snap = {};
+  for (const q of open) {
+    const a = answerOf(q);
+    snap[q.id] = a ? JSON.stringify(a) : null;
+    const st = document.getElementById("st-" + q.id);
+    const card = document.getElementById("card-" + q.id);
+    card.classList.toggle("done", !!a);
+    if (a) n++;
+    const wasQueued = queuedSnapshot && queuedSnapshot[q.id] !== undefined;
+    if (wasQueued && queuedSnapshot[q.id] === snap[q.id]) {
+      st.className = "state q"; st.textContent = "대기열에 들어감";
+    } else if (queuedSnapshot && (a || wasQueued)) {
+      st.className = "state chg"; st.textContent = "바뀜 · 다시 넣기 필요";
+    } else if (a) {
+      st.className = "state sel"; st.textContent = "선택됨 (이 페이지에만)";
+    } else {
+      st.className = "state"; st.textContent = "미답";
+    }
+  }
+  document.getElementById("count").textContent = `${n} / ${open.length} 답함`;
+  document.getElementById("fill").style.width = (100 * n / open.length) + "%";
+  document.getElementById("queueBtn").disabled = n === 0;
+}
+
+document.getElementById("fillRec").addEventListener("click", () => {
+  for (const q of open) {
+    if (answerOf(q)) continue;
+    for (const i of document.querySelectorAll(`input[name="${q.id}"]`)) i.checked = i.dataset.rec === "1";
+    if (q.type === "check") q._touched = true;
+  }
+  refresh();
+});
+
+document.getElementById("clearAll").addEventListener("click", () => {
+  for (const i of document.querySelectorAll("input")) i.checked = false;
+  for (const t of document.querySelectorAll("textarea")) t.value = "";
+  for (const q of open) q._touched = false;
+  refresh();
+});
+
+document.getElementById("queueBtn").addEventListener("click", async (e) => {
+  const items = open.map(answerOf).filter(Boolean);
+  if (!items.length) return;
+  const msg = `${P.ticket} ${P.round} 결정 ${items.length}건. 각 항목을 ${P.record_to}의 해당 "사용자 답" 칸에 원문대로 기록하고, 메모가 있는 항목은 메모를 그대로 옮긴 뒤 반영 여부를 적어라. 제출된 모든 ID(${items.map(i => i.id).join(", ")})를 처리했는지 대조한 뒤 항목별 receipt로 완료를 보고하라.`;
+  const status = document.getElementById("status");
+  if (window.lavish && typeof window.lavish.queuePrompt === "function") {
+    window.lavish.queuePrompt(msg, {
+      tag: "tracked-batch",
+      text: `${P.ticket} ${P.round} 결정 ${items.length}건`,
+      element: e.currentTarget,
+      queueKey: P.queue_key,
+      data: { ticket: P.ticket, items }
+    });
+    queuedSnapshot = {};
+    for (const q of open) { const a = answerOf(q); queuedSnapshot[q.id] = a ? JSON.stringify(a) : undefined; }
+    status.textContent = `${items.length}건을 대기열에 넣었습니다. 상단의 Send로 에이전트에게 보내세요. 보내기 전에 바꾸면 다시 넣어야 합니다.`;
+  } else {
+    const text = msg + "\n\n" + JSON.stringify(items, null, 2);
+    try { await navigator.clipboard.writeText(text); status.textContent = "Lavish 밖에서 열려 있습니다. 답을 클립보드에 복사했으니 채팅에 붙여 넣으세요."; }
+    catch { status.textContent = "Lavish 밖에서 열려 있고 클립보드도 쓸 수 없습니다."; }
+  }
+  refresh();
+});
+
+render();
+refresh();
+</script>
+</body>
+</html>
