@@ -33,7 +33,9 @@ LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # the kit's tools; the 
 conf() { python3 -B "$LIB/qrispy_config.py" "$@"; }
 REPO=$(conf repo 2>&1) || die "${REPO#qrispy_config: }"
 cd "$REPO"
-sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }  # plain macOS has only shasum (RAL ticket 090)
+# a real command for xargs (it cannot call a shell function), in the "hash  path" format the discard check reads; never BSD
+# /sbin/sha256, whose "SHA256 (path) = hash" lines hid ticket paths from that check (RAL ticket 090, found by the Linux run)
+if command -v sha256sum >/dev/null 2>&1; then SHA=(sha256sum); else SHA=(shasum -a 256); fi
 # Ticket systems come from qrispy.json (RAL ticket 089). A primary-system (here RAL) ticket is named by its slug; a ticket of
 # another system by its path, e.g. side/tickets/001-planning (PAPER1 ticket 001, 2026-10-17).
 T=$(conf ticket-dir "$slug" 2>&1) || die "${T#qrispy_config: }"   # its reason: a bad slug, or no/malformed qrispy.json (RAL ticket 089 rev1 A1-3)
@@ -51,7 +53,7 @@ ALLOWED='Read Grep Glob Bash(sha256sum:*) Bash(shasum:*) Bash(qrispy config:*) B
 DIRS="$HOME/.claude $SCR $(dirname "$LIB") ${REVIEW_EXTRA_DIRS:-}"   # + the plugin: the reviewer reads the kit method files
 while read -r x; do if [ -n "$x" ] && [ -d "$x" ]; then DIRS="$DIRS $x"; fi; done < <(conf external-roots)  # other repositories' tickets (MASF)
 
-snapshot() { { find "$T" -type f ! -name "rev${round}.md"; ls "$P"/*.md "$(dirname "$LIB")"/method/*.md; if [ -n "$DELIV" ]; then echo "$DELIV"; fi; } | LC_ALL=C sort | xargs sha256; }  # + the kit's method files the reviewer reads (RAL ticket 090)
+snapshot() { { find "$T" -type f ! -name "rev${round}.md"; ls "$P"/*.md "$(dirname "$LIB")"/method/*.md; if [ -n "$DELIV" ]; then echo "$DELIV"; fi; } | LC_ALL=C sort | xargs "${SHA[@]}"; }  # + the kit's method files the reviewer reads (RAL ticket 090)
 prompt_text() {
   echo "TICKET=$slug ROUND=$round"   # the session runs as the reviewer agent itself (--agent below); the fork skill is gone (RAL ticket 090 Q-5)
 }

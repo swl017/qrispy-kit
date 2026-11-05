@@ -119,6 +119,34 @@ def test_a_missing_protocol_entry_refuses_the_round():
         shutil.rmtree(r + "_text", ignore_errors=True)
 
 
+def test_freeze_hashes_every_file_in_the_sha256sum_format():
+    """RAL ticket 090 (Linux run): the freeze hashed nothing where `sha256` was a shell function that xargs cannot call, and on
+    macOS it ran BSD /sbin/sha256, whose "SHA256 (path) = hash" lines hid ticket paths from the discard check."""
+    r = repo()
+    try:
+        assert q(r, "review", "freeze", "001-a", "1")[0] == 0
+        lines = open(os.path.join(r + "_scratch", "001-a", "rev1", "guard_before.txt"), encoding="utf-8").read().splitlines()
+        assert len(lines) >= 3 + 4 and all(len(l) > 66 and l[64:66] == "  " and all(c in "0123456789abcdef" for c in l[:64]) for l in lines), lines[:3]
+    finally:
+        shutil.rmtree(r)
+        shutil.rmtree(r + "_scratch", ignore_errors=True)
+
+
+def test_a_change_inside_the_ticket_discards_the_round():
+    r = repo()
+    try:
+        assert q(r, "review", "freeze", "001-a", "1")[0] == 0
+        write(os.path.join(r, "tickets", "001-a", "ticket.md"), "# DEMO 001 — a, edited during the round\n")
+        txt = os.path.join(r + "_text", "review.md")
+        write(txt, review_text(r))
+        rc, out = q(r, "review", "record", "001-a", "1", txt)
+        assert rc == 3 and "the round is discarded" in out and not os.path.exists(os.path.join(r, "tickets", "001-a", "rev1.md")), (rc, out)
+    finally:
+        shutil.rmtree(r)
+        shutil.rmtree(r + "_scratch", ignore_errors=True)
+        shutil.rmtree(r + "_text", ignore_errors=True)
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for t in tests:

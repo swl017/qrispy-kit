@@ -57,6 +57,7 @@ for f in tests/test_*.py; do python3 -I "$f"; done
 
 | Machine | Saved output |
 |---|---|
-| macOS 27 (arm64), no `setsid(1)` | `tests/runs/macos-2026-11-05-rev2.txt` (all nine test files, the tree of the commit that adds it); earlier runs belong to earlier trees: `macos-2026-11-05.txt` (S5), `macos-2026-11-05-rev1.txt` (the tree RAL ticket 090 rev2 reviewed) |
+| macOS 27 (arm64), no `setsid(1)` | `tests/runs/macos-2026-11-05-hashfix.txt` (all nine test files, the tree of the commit that adds it); earlier runs belong to earlier trees: `macos-2026-11-05.txt` (S5), `macos-2026-11-05-rev1.txt` (the tree RAL ticket 090 rev2 reviewed), `macos-2026-11-05-rev2.txt` (`cd92e8a`) |
+| Linux work machine (host `usrg-sw-u20-Desktop`), at `cd92e8a` | `evidence/kit_tests_linux_cd92e8a.txt` in the RAL repository's ticket 090: 7 of 9 files pass; `test_qrispy_config` and `test_review_status` fail on the freeze bug this commit fixes |
 
 A line that says a test ran somewhere must name the saved output of that run (the kit's lint warns on operating documents that do not).
