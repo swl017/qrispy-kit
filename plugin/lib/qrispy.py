@@ -918,21 +918,6 @@ def lint_repo():
         dup = {n: v for n, v in nums.items() if len(v) > 1 and n not in known}
         detail = "; ".join(", ".join(sorted(v)) for v in dup.values()) or (f"known historic duplicates: {', '.join(sorted(known))}" if known else "")
         res.append(("warn" if dup else True, f"{system} ticket numbers are unique", detail))
-    kit = os.path.join(REPO, "tools", "agent_kit", "install.py")  # installed copies in ~/.claude vs the kit (RAL ticket 084 Q-32)
-    if os.path.exists(kit):
-        import importlib.util
-        sys.dont_write_bytecode = True
-        spec = importlib.util.spec_from_file_location("agent_kit_install", kit)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        rows = mod.check(os.path.expanduser("~"))
-        # a missing guard (hook copy, its registration, the deny rules) is a FAIL; a stale copy is a WARN (RAL ticket 089 Q-4, RAL lesson L-041)
-        absent = [n for n, ok, d in rows if not ok and n != "global CLAUDE.md" and d.startswith(("not installed", "dangling", "missing", "unreadable"))]
-        res.append((not absent, "agent kit: the git guard is installed in ~/.claude (hook copy, hook registration, deny rules)",
-                    ("absent: " + "; ".join(absent) + " — run python3 tools/agent_kit/install.py --install") if absent else ""))
-        diffs = [name for name, ok, _ in rows if not ok and name not in absent]
-        res.append(("warn" if diffs else True, "agent kit: copies in ~/.claude match tools/agent_kit",
-                    ("differs: " + "; ".join(diffs) + " — run python3 tools/agent_kit/install.py") if diffs else ""))
     res.extend(kit_rows())
     byid = None
     for system, _ in ROOTS:  # project roadmap ledgers (RAL ticket 086)
