@@ -28,7 +28,7 @@
 set -euo pipefail
 die() { echo "review_headless: $1" >&2; exit "${2:-1}"; }
 mode="${1:-}"; slug="${2:-}"; round="${3:-}"; flag="${4:-}"
-[ -n "$mode" ] && [ -n "$slug" ] && [ -n "$round" ] || die "usage: review_headless.sh start|finish <NNN-slug | <root>/NNN-slug> <round> [--dry-run]"
+[ -n "$mode" ] && [ -n "$slug" ] && [ -n "$round" ] || die "usage: qrispy review freeze|record|start|finish <NNN-slug | <root>/NNN-slug> <round> [<text_file> (record) | --dry-run (start)]"
 LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # the kit's tools; the repository is found from the working folder (RAL ticket 090)
 conf() { python3 -B "$LIB/qrispy_config.py" "$@"; }
 REPO=$(conf repo 2>&1) || die "${REPO#qrispy_config: }"
@@ -47,7 +47,7 @@ DELIV=$(python3 -c "import json,os,sys; d=json.load(open(sys.argv[1])).get('deli
 S="$SCR/$slug/rev$round"          # the reviewer prompt names this scratch directory
 J="$S/job"
 MODEL="${REVIEW_MODEL:-claude-opus-5-5}"
-ALLOWED='Read Grep Glob Bash(sha256sum:*) Bash(shasum:*) Bash(qrispy:*) Bash(ls:*) Bash(cat:*) Bash(python3:*) Bash(find:*) Bash(wc:*) Bash(diff:*) Bash(grep:*) Bash(head:*) Bash(tail:*) Bash(mkdir:*) Bash(date:*) Bash(stat:*) Bash(readlink:*) Bash(cmp:*) Bash(git status:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(git worktree list:*) Bash(git branch:*)'
+ALLOWED='Read Grep Glob Bash(sha256sum:*) Bash(shasum:*) Bash(qrispy config:*) Bash(ls:*) Bash(cat:*) Bash(python3:*) Bash(find:*) Bash(wc:*) Bash(diff:*) Bash(grep:*) Bash(head:*) Bash(tail:*) Bash(mkdir:*) Bash(date:*) Bash(stat:*) Bash(readlink:*) Bash(cmp:*) Bash(git status:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(git worktree list:*) Bash(git branch:*)'
 DIRS="$HOME/.claude $SCR $(dirname "$LIB") ${REVIEW_EXTRA_DIRS:-}"   # + the plugin: the reviewer reads the kit method files
 while read -r x; do if [ -n "$x" ] && [ -d "$x" ]; then DIRS="$DIRS $x"; fi; done < <(conf external-roots)  # other repositories' tickets (MASF)
 

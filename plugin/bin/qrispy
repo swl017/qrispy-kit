@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""qrispy — the one command of the qrispy kit (RAL ticket 090). It finds the kit from its own real path (it may be
+"""qrispy — the one command of the qrispy kit. It finds the kit from its own real path (it may be
 a symlink in ~/.local/bin) and runs the tool for the subcommand; the tools find the repository from the working folder.
 
     qrispy ls | show | inbox | cite | lint | questions | dashboard ...   tickets (lib/qrispy.py)
@@ -13,6 +13,7 @@ a symlink in ~/.local/bin) and runs the tool for the subcommand; the tools find 
     qrispy rules                                                          print the core rules (Claude Code gets them from the
                                                                           plugin's SessionStart hook; Codex and other agents run this)
 """
+# Provenance (kept out of the help text, which every repository prints): RAL ticket 090.
 import os
 import sys
 

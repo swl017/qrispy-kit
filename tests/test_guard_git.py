@@ -5,7 +5,7 @@ import os
 import subprocess
 import sys
 
-sys.dont_write_bytecode = True  # importing guard_git must not leave __pycache__ in the repository (RAL 084 rev1 A-10)
+sys.dont_write_bytecode = True  # importing guard_git must not leave __pycache__ in the repository (RAL ticket 084 rev1 A-10)
 
 HERE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "plugin", "hooks")  # the guard lives in the kit's plugin (RAL ticket 090)
 sys.path.insert(0, HERE)
@@ -49,7 +49,7 @@ CASES = [
     ("D21", "if true; then git checkout x; fi", main_repo, "deny"),
     ("D22", "while read f; do echo $f; done < l; ! git stash", main_repo, "deny"),
     ("D20", "echo 'unbalanced && git checkout -- .", main_repo, "deny"),
-    # RAL 084 rev1 B-2 / A-1: forms that passed with no decision before the 2026-10-17 fix
+    # RAL ticket 084 rev1 B-2 / A-1: forms that passed with no decision before the 2026-10-17 fix
     ("D23", "find . -name f -exec git checkout -- {} +", main_repo, "deny"),
     ("D24", "timeout -s KILL 5 git reset --hard", main_repo, "deny"),
     ("D25", "sudo -u usrg git reset --hard", main_repo, "deny"),
@@ -66,7 +66,7 @@ CASES = [
     ("D36", "xargs -n 1 git restore", main_repo, "deny"),
     ("D37", "git switch --force main", main_repo, "deny"),
     ("A05", "timeout -s KILL 5 git commit -m x", main_repo, "ask"),
-    # RAL 084 rev2 R2-B1: shell flags, stdin to a shell, bundled wrapper options, more wrappers
+    # RAL ticket 084 rev2 R2-B1: shell flags, stdin to a shell, bundled wrapper options, more wrappers
     ("D38", "bash -lc 'git checkout -- .'", main_repo, "deny"),
     ("D39", "bash -ec 'git reset --hard'", main_repo, "deny"),
     ("D40", "sh -xc 'git stash'", main_repo, "deny"),
@@ -92,7 +92,7 @@ CASES = [
     ("D60", "sudo -u usrg bash -c 'cd /r && git reset --hard'", main_repo, "deny"),
     ("D61", "parallel git checkout ::: a b", main_repo, "deny"),
     ("D62", "watch -n 1 git stash", main_repo, "deny"),
-    # RAL 084 rev3 R3-B1: structural gaps (line continuation, quoted substitution) and category variants
+    # RAL ticket 084 rev3 R3-B1: structural gaps (line continuation, quoted substitution) and category variants
     ("D63", "git \\\n  checkout -- .", main_repo, "deny"),
     ("D64", "git -C /x \\\n  reset --hard", main_repo, "deny"),
     ("D65", "git switch \\\n  -f main", main_repo, "deny"),
@@ -202,7 +202,7 @@ def run_hook(cmd, cwd, transcript=None):
 
 
 
-# --- chat approval of a plain commit (RAL 084 Q-42): the hook reads the session transcript ---------------------------------
+# --- chat approval of a plain commit (RAL ticket 084 Q-42): the hook reads the session transcript ---------------------------------
 import time as _time  # noqa: E402
 
 
@@ -258,7 +258,7 @@ CHAT = [  # (id, command, transcript entries (None = no transcript_path, "missin
     ("C03", GIT_COMMIT, [human("다음으로 넘어가자")], "ask"),
     ("C04", GIT_COMMIT, [human("1,2,3 커밋", age=40)], "ask"),
     ("C05", GIT_COMMIT, [human("1,2,3 커밋", age=5), human("아, 커밋 하지 마", age=2)], "ask"),
-    ("C06", GIT_COMMIT, [human("RAL 085 확인해줘\n1,2,3 커밋\n그리고 이름도 정하자")], None),
+    ("C06", GIT_COMMIT, [human("DEMO 085 확인해줘\n1,2,3 커밋\n그리고 이름도 정하자")], None),
     ("C07", GIT_COMMIT, [tool_result("1,2,3 커밋")], "ask"),
     ("C08", GIT_COMMIT, [assistant("1,2,3 커밋")], "ask"),
     ("C09", GIT_COMMIT, [compact("1,2,3 커밋")], "ask"),
@@ -290,14 +290,14 @@ CHAT = [  # (id, command, transcript entries (None = no transcript_path, "missin
     ("C34", GIT_COMMIT, [human_blocks(["<ide_opened_file>1,2,3 커밋</ide_opened_file>", "다음으로 넘어가자"])], "ask"),
     ("C35", GIT_COMMIT, [human_blocks([IDE, "권고대로"])], "ask"),
     ("C36", GIT_COMMIT, [human_blocks([IDE, "1,2,3 커밋"])], None),
-    # a real message of 2026-10-18 answered a numbered list item by item: "1. 1 커밋" (PAPER1 002, lesson L-023)
+    # a real message of 2026-10-18 answered a numbered list item by item: "1. 1 커밋" (PAPER1 ticket 002, lesson L-023)
     ("C37", GIT_COMMIT, [human("1. 1 커밋\n2. 응\n3. 하지 않기\n4. 열자")], None),
     ("C38", GIT_COMMIT, [human("1) 커밋")], None),
     ("C39", GIT_COMMIT, [human("1. 1 진행\n2. 응")], "ask"),
     ("C40", GIT_COMMIT, [human("1. 1 커밋\n2. 아니 커밋 하지 마")], "ask"),
     ("C41", GIT_COMMIT, [human("1. 커밋할까?")], "ask"),
     ("C42", GIT_COMMIT, [human("2024. 커밋")], "ask"),
-    # a real message of 2026-10-19 put another decision and the approval on one line (PAPER1 004, lesson L-023)
+    # a real message of 2026-10-19 put another decision and the approval on one line (PAPER1 ticket 004, lesson L-023)
     ("C43", GIT_COMMIT, [human("1 종결, 1,2 커밋")], None),
     ("C44", GIT_COMMIT, [human("1 확인 / 2 커밋")], None),
     ("C45", GIT_COMMIT, [human("1 종결, commit all")], None),
@@ -306,7 +306,7 @@ CHAT = [  # (id, command, transcript entries (None = no transcript_path, "missin
     ("C48", GIT_COMMIT, [human("1 종결, 1,2 커밋할까?")], "ask"),
     ("C49", GIT_COMMIT, [human("1 종결, 1,2 커밋 말고 나중에")], "ask"),
     ("C50", GIT_COMMIT, [human("1,2 커밋은 아직, 1 종결")], "ask"),
-    # a real message of 2026-10-31 joined the other decision with a connective ending, no comma (PAPER1 006, lesson L-023)
+    # a real message of 2026-10-31 joined the other decision with a connective ending, no comma (PAPER1 ticket 006, lesson L-023)
     ("C51", GIT_COMMIT, [human("006 닫고 1,2 커밋")], None),
     ("C52", GIT_COMMIT, [human("리뷰 끝났으니 1 커밋")], None),
     ("C53", GIT_COMMIT, [human("확인해서 전부 커밋해줘")], None),

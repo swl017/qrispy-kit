@@ -26,9 +26,9 @@ python3 ~/Code/qrispy-kit/install.py --install   # register the clone as a local
                                                  # register the guard and the deny rules, link ~/.local/bin/qrispy
 ```
 
-Scopes follow the usual split: what protects every repository is set for the user, the workflow only where a repository asks for it. The guard hook (`python3 -I "<clone>/plugin/hooks/guard_git.py"`) and the deny rules go into `~/.claude/settings.json` and hold in every repository. The plugin is installed but turned off for the user; a repository turns it on in its own `.claude/settings.json` (`qrispy init` writes that line), so its skills and rules appear only there (checked by experiment, RAL ticket 090 `evidence/plugin_spike/r8_project_scope.txt`). `--install` backs up `~/.claude/settings.json` before changing it, and replaces an older registration of the guard (for example a copy in `~/.claude/hooks/`, which is kept as `.retired-<time>`). If the clone moves, run `install.py --install` again: the guard is registered by its path.
+Scopes follow the usual split: what protects every repository is set for the user, the workflow only where a repository asks for it. The guard hook (`python3 -I "<clone>/plugin/hooks/guard_git.py"`) and the deny rules go into `~/.claude/settings.json` and hold in every repository. The plugin is installed but turned off for the user; a repository turns it on in its own `.claude/settings.json` (`qrispy init` writes that line), so its skills and rules appear only there (checked by experiment; the record is in the RAL repository, ticket 090, `evidence/plugin_spike/r8_project_scope.txt`). `--install` backs up `~/.claude/settings.json` before changing it, and replaces an older registration of the guard (for example a copy in `~/.claude/hooks/`, which is kept as `.retired-<time>`). If the clone moves, run `install.py --install` again: the guard is registered by its path.
 
-**Updating**: `git pull` in the clone, then start a new session (an open session can run `/reload-plugins`). Claude Code reads a plugin installed from a local marketplace from the clone itself; it also keeps a copy under `~/.claude/plugins/cache/`, which it does not use (checked by experiment, RAL ticket 090 `y_slice_1.md` §2a).
+**Updating**: `git pull` in the clone, then start a new session (an open session can run `/reload-plugins`). Claude Code reads a plugin installed from a local marketplace from the clone itself; it also keeps a copy under `~/.claude/plugins/cache/`, which it does not use (checked by experiment; the record is in the RAL repository, ticket 090, `y_slice_1.md` §2a).
 
 ## Set up a repository
 
@@ -43,6 +43,10 @@ It writes `qrispy.json`, `<root>/LESSONS.md`, `<root>/METHOD_LOCAL.md` (the repo
 
 Codex and other agents read `AGENTS.md` (the same text as `CLAUDE.md`). They do not load Claude Code plugins, so they get neither the skills nor the guard hook nor the session-start rules: the `CLAUDE.md` skeleton tells them to run `qrispy rules` first, and the `qrispy` command works the same for them. Their own approval settings must stand in for the guard.
 
+## Conventions for the kit's own text
+
+Help and usage text (`qrispy … --help`, the usage lines a command prints) and every message a user or an agent sees are read in every repository that installs the kit, so they carry no ticket references. Where a rule or a line of code came from is written as a code comment that names the ticket in full (`RAL ticket 087`), or in `plugin/method/HISTORY.md` for the method. `tests/test_help_text.py` checks the help texts.
+
 ## Tests
 
 Run from the kit folder; none needs a GPU or a model session. `tests/test_init.py` also runs real `claude plugin` commands against a scratch home when `claude` is on PATH.
@@ -53,6 +57,6 @@ for f in tests/test_*.py; do python3 -I "$f"; done
 
 | Machine | Saved output |
 |---|---|
-| macOS 27 (arm64), no `setsid(1)` | `tests/runs/macos-2026-11-05.txt` (all eight test files) |
+| macOS 27 (arm64), no `setsid(1)` | `tests/runs/macos-2026-11-05-rev2.txt` (all nine test files, the tree of the commit that adds it); earlier runs belong to earlier trees: `macos-2026-11-05.txt` (S5), `macos-2026-11-05-rev1.txt` (the tree RAL ticket 090 rev2 reviewed) |
 
 A line that says a test ran somewhere must name the saved output of that run (the kit's lint warns on operating documents that do not).

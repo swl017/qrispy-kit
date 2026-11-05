@@ -1,0 +1,25 @@
+# kit tests on this Mac, 2026-11-05 21:06 (RAL ticket 090 rev1 corrections): the working tree of the commit that adds this file, on top of d5f6b22; nothing was edited after this run
+$ sw_vers; uname -m; command -v setsid || echo "(no setsid)"; python3 --version; claude --version
+ProductName:		macOS
+ProductVersion:		27.0.1
+BuildVersion:		26A434
+arm64
+(no setsid)
+Python 3.15.0
+2.1.309 (Claude Code)
+$ python3 -I tests/test_check_response.py
+9/9 PASS
+$ python3 -I tests/test_guard_git.py
+213/213 pass
+$ python3 -I tests/test_init.py
+2/2 PASS
+$ python3 -I tests/test_install.py
+1/1 PASS
+$ python3 -I tests/test_jobs_portable.py
+9/9 PASS
+$ python3 -I tests/test_lint_evidence.py
+1/1 PASS
+$ python3 -I tests/test_qrispy_config.py
+6/6 PASS
+$ python3 -I tests/test_review_status.py
+4/4 PASS

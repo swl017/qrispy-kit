@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests for run_job.sh, wait_job.sh and job_status.sh on any POSIX machine, including macOS, which has no setsid(1),
 no `date -Is` and no /proc (RAL ticket 089 S3; before it, run_job.sh started nothing on macOS and printed
-"started … (pid ?)"). Run from the kit: python3 -I tests/test_jobs_portable.py   (about 25 s, no GPU; RAL 090 moved it)"""
+"started … (pid ?)"). Run from the kit: python3 -I tests/test_jobs_portable.py   (about 25 s, no GPU; RAL ticket 090 moved it)"""
 import json
 import os
 import re
@@ -13,7 +13,7 @@ import tempfile
 import time
 
 sys.dont_write_bytecode = True
-LIB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "plugin", "lib")  # the kit's tools (RAL 090)
+LIB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "plugin", "lib")  # the kit's tools (RAL ticket 090)
 HERE = os.path.join(LIB, "jobs")
 sys.path.insert(0, LIB)
 import qrispy_config as qc  # noqa: E402
@@ -22,7 +22,7 @@ RUN, WAIT, STATUS = (os.path.join(HERE, n) for n in ("run_job.sh", "wait_job.sh"
 SCRATCH = tempfile.mkdtemp(prefix="jobs_portable_test_")
 ENV = dict(os.environ, AGENT_LOCK_DIR=os.path.join(SCRATCH, "locks"))  # never the user's real away state or GPU lock
 ENV.pop("QRISPY_REPO", None)
-with open(os.path.join(SCRATCH, "qrispy.json"), "w") as _f:  # job dirs live here; gpu_lock finds the repository from them (RAL 090)
+with open(os.path.join(SCRATCH, "qrispy.json"), "w") as _f:  # job dirs live here; gpu_lock finds the repository from them (RAL ticket 090)
     json.dump({"systems": [{"name": "RAL", "root": "tickets"}], "review_scratch": os.path.join(SCRATCH, "review")}, _f)
 ISO = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[+-]\d\d:\d\d$")  # what GNU `date -Is` prints
 
@@ -103,7 +103,7 @@ def test_j4_died_without_done():
 
 
 def test_j5_old_job_with_empty_start_time():
-    """Jobs written on macOS before RAL 089 have "started": "" (BSD date has no -Is); job_status must not crash."""
+    """Jobs written on macOS before RAL ticket 089 have "started": "" (BSD date has no -Is); job_status must not crash."""
     d = os.path.join(SCRATCH, "j5")
     os.makedirs(d)
     json.dump({"id": "j5", "command": ["x"], "started": "", "next": "", "log": "job.log"}, open(os.path.join(d, "job.json"), "w"))
@@ -122,7 +122,7 @@ def test_j6_pid_alive_and_parent_pid_boundaries():
 
 
 def patched_run_job(name, old, new):
-    """A copy of run_job.sh with one launch line changed, to make the start fail or lag (RAL 089 rev1 A1-4)."""
+    """A copy of run_job.sh with one launch line changed, to make the start fail or lag (RAL ticket 089 rev1 A1-4)."""
     s = open(RUN, encoding="utf-8").read()
     assert s.count(old) == 1, old
     m = os.path.join(SCRATCH, "mirror")  # a mirror of lib/ around the copy, so its relative paths (../gpu_lock.py) resolve
@@ -147,7 +147,7 @@ def test_j7_a_job_that_cannot_start_is_reported():
 
 
 def test_j9_a_gpu_job_that_cannot_start_does_not_leave_the_lock_running():
-    """RAL 089 rev2 A2-3: --gpu takes the lock first; a start failure must set it back to held, as a normal end does."""
+    """RAL ticket 089 rev2 A2-3: --gpu takes the lock first; a start failure must set it back to held, as a normal end does."""
     run = patched_run_job("run_fail_gpu", LAUNCH, '"${detach[@]}" nohup /nonexistent/run_job_inner --inner')
     d = os.path.join(SCRATCH, "j9")
     rc, out = sh(run, d, "--gpu", "sim", "--", "true")

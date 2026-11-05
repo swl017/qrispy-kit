@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""launch — start and list the workers an orchestrating session runs for its child tickets (RAL ticket 087, S3).
+"""launch — start and list the workers an orchestrating session runs for its child tickets.
 
     launch.py prompt   --ticket "DEMO 005" --parent "DEMO 003" --parent-session NAME --agent claude|codex|gemini --task TEXT [--headless]
                        print the first prompt, filled from the plugin's skills/orchestrate/templates/worker_prompt.md
@@ -23,6 +23,7 @@ Workers use this repository's settings; no flag that widens permissions (--dange
 --full-auto) is ever passed. Claude workers report with SendMessage; other agents append status lines to
 <ticket>/jobs/worker/status.log (format `<ticket> <state>: <one line>`, states working | blocked | needs-decision | done | failed).
 """
+# Provenance (kept out of the help text, which every repository prints): RAL ticket 087, S3.
 import argparse
 import json
 import os

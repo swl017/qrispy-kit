@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""qrispy init — set up a repository for the qrispy kit (RAL ticket 090, i_design.md §6).
+"""qrispy init — set up a repository for the qrispy kit.
 
     qrispy init --system NAME [--root tickets] [--scratch /tmp/qrispy-review] [--dry-run]
 
@@ -13,6 +13,7 @@ Run it in the repository's root folder. It writes, and never overwrites (an exis
                               destructive git commands, read-only qrispy commands allowed, background agents not isolated
                               in worktrees (worktree.bgIsolation none, as the method's Orchestration section assumes)
 """
+# Provenance (kept out of the help text, which every repository prints): RAL ticket 090, i_design.md §6.
 import argparse
 import json
 import os

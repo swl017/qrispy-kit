@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""gpu_lock — who is using this machine's GPU, for which ticket, and whether it is running or only held (RAL ticket 087, S2).
+"""gpu_lock — who is using this machine's GPU, for which ticket, and whether it is running or only held.
 
     gpu_lock.py status [--json]                               one line: free | running | held | ownerless (+ owner, since, note)
     gpu_lock.py take --kind sim|train|other (--ticket "DEMO 006" --session NAME | --job DIR) [--note TEXT]
@@ -17,6 +17,7 @@ File: $AGENT_LOCK_DIR/gpu.json (default ~/.agent_locks/, outside every repositor
 on the machine sees the same lock). Writes hold an flock on gpu.lock and replace the file atomically.
 QRISPY_AGENTS_JSON=<file> replaces `claude agents --json` (tests).
 """
+# Provenance (kept out of the help text, which every repository prints): RAL ticket 087, S2.
 import argparse
 import datetime
 import fcntl

@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
-"""qrispy — read-only status view of QRISPY tickets (RAL ticket 084, S3; named `qr` until 2026-10-15).
+"""qrispy — the status view of QRISPY tickets, and the entry to the kit's other tools (see `qrispy help`).
 
     qrispy ls [--recent | --all | --parked] [--<system> ...]   (--parked: grouped by revisit trigger)   one line per ticket (default: open tickets of both systems)
-    qrispy ls --tree [--all] [--<system> ...]   project → parent → child tickets (state.json.parent, RAL ticket 087), with each owning session and whether it runs
+    qrispy ls --tree [--all] [--<system> ...]   project → parent → child tickets (state.json.parent), with each owning session and whether it runs
     qrispy show <id>                        one ticket's status card (with its parent, its children, and whether the owning sessions run)
     qrispy inbox                            everything the user owes, across tickets
     qrispy cite <id>                        the ticket's citation boundary (CITE.md, else what exists)
     qrispy lint <id> | --repo               registry checks (PASS/FAIL lines); --repo checks memory-file sizes
-    qrispy questions --tree <id> [--html <out.html>]   every unanswered Q item of a ticket and its children on one decision page (RAL ticket 087 Q-15)
+    qrispy questions --tree <id> [--html <out.html>]   every unanswered Q item of a ticket and its children on one decision page
     qrispy dashboard --html <out.html>      one static page: what the user owes, running jobs, roadmap items and the tickets serving them, recent tickets (open it with Lavish)
 
 <id> is a number (`084`, `DEMO 084`, `SIDE 017`, `DEMO 001`) or a slug fragment. This tool reports; it never gates,
 never writes a ticket file, and never rewrites an old state.json (`dashboard` writes only the page named by --html). Fields it cannot find are shown as `?`.
 Output is compact on purpose (agent-facing): no decoration, one item per line, counts first.
 """
+# Provenance (kept out of the help text, which every repository prints): RAL ticket 084 S3 (named `qr` until 2026-10-15); the tree view RAL ticket 087; questions --tree RAL ticket 087 Q-15.
 import glob
 import json
 import os

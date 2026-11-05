@@ -2,7 +2,7 @@
 """Tests for qrispy_config.py and the tools that read qrispy.json (RAL ticket 089 T-3–T-7, RAL ticket 090 T-1).
 Run from the kit: python3 -I tests/test_qrispy_config.py
 
-The tools live in the kit and find the repository from the working folder (RAL 090). T-3 builds a scratch repository
+The tools live in the kit and find the repository from the working folder (RAL ticket 090). T-3 builds a scratch repository
 whose qrispy.json names other systems (DEMO, SIDE) and other folders, holds no tools at all, and runs the kit's
 `qrispy` command there: if a tool still carried a fixed system or looked for itself inside the repository, it would fail."""
 import json
@@ -60,7 +60,7 @@ def run(repo, *cmd, cwd=None, **extra):
 
 
 def test_t1_repository_is_found_from_the_working_folder():
-    """RAL 090 T-1: a subfolder finds the qrispy.json above it; none above stops with the reason; QRISPY_REPO wins."""
+    """RAL ticket 090 T-1: a subfolder finds the qrispy.json above it; none above stops with the reason; QRISPY_REPO wins."""
     r = demo_repo()
     other = os.path.realpath(tempfile.mkdtemp(prefix="qrispy_no_repo_"))
     try:
@@ -96,7 +96,7 @@ def test_t3_tools_follow_the_config():
         rc, out = run(r, QRISPY, "worker", "prompt", "--ticket", "SIDE 001", "--parent", "DEMO 001",
                       "--parent-session", "s0", "--agent", "claude", "--task", "t")
         assert rc == 0 and "side/tickets/001-gamma" in out, out
-        rc, out = run(r, QRISPY, "worker", "prompt", "--ticket", "RAL 001", "--parent", "DEMO 001",
+        rc, out = run(r, QRISPY, "worker", "prompt", "--ticket", "NOPE 001", "--parent", "DEMO 001",
                       "--parent-session", "s0", "--agent", "claude", "--task", "t")
         assert rc == 1 and "<DEMO|SIDE> NNN" in out and "Traceback" not in out, out
         rc, out = run(r, QRISPY, "review", "start", "001-alpha", "1", "--dry-run")
@@ -107,7 +107,7 @@ def test_t3_tools_follow_the_config():
         assert rc == 0 and "ticket side/tickets/001-gamma" in out, out
         rc, out = run(r, QRISPY, "review", "start", "work/tickets/001-alpha", "1", "--dry-run")
         assert rc != 0 and "not a ticket slug of DEMO" in out, out  # a primary ticket goes by its slug only
-        os.remove(os.path.join(r, "qrispy.json"))  # RAL 089 rev1 A1-3: the reason reaches the user, not "bad slug"
+        os.remove(os.path.join(r, "qrispy.json"))  # RAL ticket 089 rev1 A1-3: the reason reaches the user, not "bad slug"
         rc, out = run(r, QRISPY, "review", "start", "001-alpha", "1", "--dry-run")
         assert rc != 0 and "no qrispy.json" in out, out
         rc, out = run(r, QRISPY, "ls")
@@ -118,11 +118,9 @@ def test_t3_tools_follow_the_config():
 
 def test_t4_claude_project_dir():
     base = os.path.expanduser("~/.claude/projects")
-    assert qc.claude_project_dir("/Users/sw/Code/2026-RAL-Active-Coop-for-Interception") == \
-        os.path.join(base, "-Users-sw-Code-2026-RAL-Active-Coop-for-Interception")
-    # the value RAL ticket 089 found fixed in qrispy.py, from the Linux work machine
-    assert qc.claude_project_dir("/home/usrg/IsaacPX4/2026-RAL-Active-Coop-for-Interception") == \
-        os.path.join(base, "-home-usrg-IsaacPX4-2026-RAL-Active-Coop-for-Interception")
+    assert qc.claude_project_dir("/Users/demo/Code/2026-My-Repo") == os.path.join(base, "-Users-demo-Code-2026-My-Repo")
+    # a Linux home and a dot and an underscore, which become '-' too (RAL ticket 089 found such a path fixed in qrispy.py)
+    assert qc.claude_project_dir("/home/demo/work/my_repo.v2") == os.path.join(base, "-home-demo-work-my-repo-v2")
 
 
 def bad(text):
@@ -151,7 +149,7 @@ def test_t5_bad_configs_stop_with_a_reason():
         "absolute root": (sysj([{"name": "A", "root": "/abs/tickets"}]), "relative path"),
         "root leaving the repo": (sysj([{"name": "A", "root": "../x/tickets"}]), "relative path"),
         "no root": (sysj([{"name": "A"}]), "has no root"),
-        "no review_scratch": (json.dumps({"systems": [{"name": "A", "root": "a"}]}), "'review_scratch'"),  # RAL 089 rev1 A1-3
+        "no review_scratch": (json.dumps({"systems": [{"name": "A", "root": "a"}]}), "'review_scratch'"),  # RAL ticket 089 rev1 A1-3
     }
     for name, (text, want) in cases.items():
         got = bad(text)
@@ -180,7 +178,7 @@ def test_t6_system_of_dir_longest_root_first():
 
 
 def test_t7_auto_memory_line_names_its_path_and_passes_when_none_yet():
-    """RAL 089 Q-7 A, Q-8: the lint line shows the path it checked; no index yet is a PASS; over 40 lines is a FAIL."""
+    """RAL ticket 089 Q-7 A, Q-8: the lint line shows the path it checked; no index yet is a PASS; over 40 lines is a FAIL."""
     r = demo_repo()
     home = tempfile.mkdtemp(prefix="qrispy_config_home_")
     try:

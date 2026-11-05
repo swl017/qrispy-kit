@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Unit tests for check_response.py (PAPER1 ticket 004 rev3, LESSONS L-019 device). Run: python3 -I test_check_response.py"""
+"""Unit tests for check_response.py (PAPER1 ticket 004 rev3, RAL lesson L-019 device). Run: python3 -I test_check_response.py"""
 import os
 import sys
 
 sys.dont_write_bytecode = True
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "plugin", "lib"))  # RAL 090: the tool lives in the kit
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "plugin", "lib"))  # RAL ticket 090: the tool lives in the kit
 import check_response as cr  # noqa: E402
 
 REVIEW = """
