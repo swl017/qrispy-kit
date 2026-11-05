@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """launch — start and list the workers an orchestrating session runs for its child tickets (RAL ticket 087, S3).
 
-    launch.py prompt   --ticket "PAPER1 005" --parent "PAPER1 003" --parent-session NAME --agent claude|codex|gemini --task TEXT [--headless]
+    launch.py prompt   --ticket "DEMO 005" --parent "DEMO 003" --parent-session NAME --agent claude|codex|gemini --task TEXT [--headless]
                        print the first prompt, filled from the plugin's skills/orchestrate/templates/worker_prompt.md
-    launch.py claude-bg --ticket "PAPER1 005" --prompt-file F [--worktree] [--dry-run]
-                       a Claude background session named paper1-005 (`claude --bg -n`); the user joins with `claude attach paper1-005`
+    launch.py claude-bg --ticket "DEMO 005" --prompt-file F [--worktree] [--dry-run]
+                       a Claude background session named demo-005 (`claude --bg -n`); the user joins with `claude attach demo-005`
     launch.py headless --agent claude|codex|gemini --job DIR --prompt-file F [--dry-run]
                        a one-shot run (`claude -p`, `codex exec`, `gemini <prompt>`) under `qrispy job run` (lib/jobs/run_job.sh); output in DIR/job.log
-    launch.py tmux     --agent codex|gemini --ticket "PAPER1 005" --prompt-file F [--cwd DIR] [--dry-run]
-                       an interactive session of another agent in tmux session `agents`, window paper1-005 (RAL 087 Q-10:
+    launch.py tmux     --agent codex|gemini --ticket "DEMO 005" --prompt-file F [--cwd DIR] [--dry-run]
+                       an interactive session of another agent in tmux session `agents`, window demo-005 (RAL ticket 087 Q-10:
                        agents without a named background session); the user joins with `tmux attach -t agents`
     Every command takes --root DIR: the repository or git worktree the worker runs in (default: this repository).
     launch.py result DIR   the final answer of a headless run (Claude runs log stream-json so their job.log grows while they work)
     launch.py watch --names a,b [--interval 20] [--heartbeat 300]   wait on Claude background workers: exits 0 when one waits
                        at a permission dialog, finishes its turn or is gone, 4 on the heartbeat; run it as a background command
     launch.py away on [--until HH:MM] | off | status   the user is away: watch and wait_job.sh stop waking the session,
-                       events wait for one summary on return, new GPU runs are refused (RAL 087 Q-16)
+                       events wait for one summary on return, new GPU runs are refused (RAL ticket 087 Q-16)
     launch.py whoami [--json]   this session's name and session id (write both into the ticket you own; Q-17)
     launch.py status   every worker: Claude sessions (`claude agents --json`) and the windows of tmux session `agents`
 
@@ -31,14 +31,14 @@ import shlex
 import subprocess
 import sys
 
-LIB = os.path.dirname(os.path.abspath(__file__))  # the kit's tools (RAL 090)
+LIB = os.path.dirname(os.path.abspath(__file__))  # the kit's tools (RAL ticket 090)
 sys.path.insert(0, LIB)
 sys.dont_write_bytecode = True  # no lib/__pycache__ from the import below
-import qrispy_config  # noqa: E402  ticket systems from qrispy.json (RAL 089)
+import qrispy_config  # noqa: E402  ticket systems from qrispy.json (RAL ticket 089)
 
 TEMPLATE = os.path.join(qrispy_config.PLUGIN, "skills", "orchestrate", "templates", "worker_prompt.md")
 RUN_JOB = os.path.join(LIB, "jobs", "run_job.sh")
-CFG = qrispy_config.load_or_exit(None, "launch")  # finds the repository from the working folder (RAL 090)
+CFG = qrispy_config.load_or_exit(None, "launch")  # finds the repository from the working folder (RAL ticket 090)
 REPO = CFG.repo
 ROOTS = CFG.root_of
 TMUX_SESSION = "agents"
@@ -52,7 +52,7 @@ def name_of(ticket):
 
 
 def ticket_dir(ticket, root=REPO):
-    name_of(ticket)  # an unknown system stops here with the usage line, not a KeyError (RAL 089)
+    name_of(ticket)  # an unknown system stops here with the usage line, not a KeyError (RAL ticket 089)
     system, num = ticket.split()
     base = os.path.join(root, ROOTS[system])
     hits = [d for d in os.listdir(base) if d.startswith(num + "-")] if os.path.isdir(base) else []
@@ -87,22 +87,22 @@ def cmd_prompt(a):
     vals = {"ticket": a.ticket, "ticket_dir": tdir, "parent": a.parent, "parent_session": a.parent_session,
             "name": name_of(a.ticket), "report": report, "task": a.task.strip(),
             # a headless run has nobody to answer a permission dialog, so it edits nothing: its result is its final
-            # answer (job.log) and the orchestrator files it (RAL 087 S3 live test)
+            # answer (job.log) and the orchestrator files it (RAL ticket 087 S3 live test)
             "setup2": ("You run headless: do not edit any file and do not write `session`; your final answer is your result. Nobody can answer a permission dialog here, so a call that needs one is refused: report it as `blocked: <what was refused>` and say what you could not do, rather than quietly narrowing the task."
                        if a.headless else f'Run `qrispy worker whoami` and write its two lines into your ticket\'s `state.json` (`session`, `session_id`; your name should be {name_of(a.ticket)}).'),
-            # RAL 087 S4 pilot notes: a headless worker cannot write Q items, and every interactive worker must record a
+            # RAL ticket 087 S4 pilot notes: a headless worker cannot write Q items, and every interactive worker must record a
             # decision the user gives it directly and tell the parent
             "decision_rule": ("A decision that belongs to the user: put the proposed Q item (question, options, your recommendation) in your final answer and report `needs-decision`; the parent writes it into the ticket."
                               if a.headless else
                               "A decision that belongs to the user goes into your ticket's `q_questions.md` as a Q item with a recommendation; then report `needs-decision`."),
             "user_decision": ("" if a.headless else
                               f"\n- The user may answer you directly (they can attach to your session). Copy the answer verbatim into your ticket's `q_questions.md` under `> 사용자 답 (<date>, <channel>):` with the decision line, then report `{a.ticket} decision: Q-n = <gist>` to the parent."),
-            # RAL 087 S4 pilot note 7: a worker read a permission dialog as "edits are blocked in the shared checkout" and
+            # RAL ticket 087 S4 pilot note 7: a worker read a permission dialog as "edits are blocked in the shared checkout" and
             # moved itself and its ticket files into a worktree, leaving the parent a stale copy on main
             "stay": ("Stay in the directory you were started in; never create or enter a git worktree yourself. A permission dialog or a refusal is not a reason to move: report `blocked: <what>` and wait for the user. "
                      f"Your ticket files live only in the main checkout ({os.path.join(a.main_root, tdir)}); if you were started in a worktree for code, still write ticket files there."),
-            # RAL 087 S4 pilot note 15: siblings had no path to align a design, so the parent relayed by hand
-            "siblings": ("Other workers under " + a.parent + " are your siblings (`qrispy show " + a.parent + "` lists them; a Claude background worker is named like `paper1-005`). "
+            # RAL ticket 087 S4 pilot note 15: siblings had no path to align a design, so the parent relayed by hand
+            "siblings": ("Other workers under " + a.parent + " are your siblings (`qrispy show " + a.parent + "` lists them; a Claude background worker is named after its ticket, in lower case with a hyphen, like `demo-005` for DEMO 005). "
                          + ("Put any alignment item for a sibling in your final answer; the parent passes it on."
                             if a.headless or a.agent != "claude" else
                             "For a technical alignment item (an interface, a file format, a shared definition), message that sibling directly with SendMessage and send the parent a one-line copy `" + a.ticket + " aligned with <sibling>: <gist>`. Anything that would change another ticket's scope or acceptance criteria, or needs the user, goes to the parent instead.")),
@@ -135,9 +135,9 @@ def cmd_headless(a):
     m = re.search(rf"({CFG.roots_alt()})/(\d{{3}})-[^/]+/jobs/([^/]+)/?$", os.path.abspath(a.job))
     sysname = CFG.system_of_root[m.group(1)].lower() if m else "job"
     hname = f"{sysname}-{m.group(2)}-{m.group(3)}" if m else os.path.basename(a.job)
-    # no --permission-mode: a worker runs in the user's normal mode, like an interactive session (RAL 087 S3 live test;
+    # no --permission-mode: a worker runs in the user's normal mode, like an interactive session (RAL ticket 087 S3 live test;
     # `default` is for read-only reviewers and refuses every edit in a session nobody can answer)
-    # stream-json: job.log grows while the worker works, so a heartbeat can tell working from stuck (RAL 087 S4 pilot
+    # stream-json: job.log grows while the worker works, so a heartbeat can tell working from stuck (RAL ticket 087 S4 pilot
     # note 3); `launch.py result <job dir>` pulls the final answer out of it
     agent = {"claude": ["claude", "-p", "-n", hname, "--output-format", "stream-json", "--verbose", p],
              "codex": ["codex", "exec", p],
@@ -185,7 +185,7 @@ def cmd_result(a):
         den = res.get("permission_denials") or []
         print(f"\n[{os.path.basename(os.path.abspath(a.job))}: {res.get('subtype')}, tool_calls={calls}, turns={res.get('num_turns')}, "
               f"denials={len(den)}, cost_usd={res.get('total_cost_usd') or 0:.2f}]")
-        if den:  # a headless run has no dialog: refused calls are silent unless shown here (RAL 087 S4 pilot note 4)
+        if den:  # a headless run has no dialog: refused calls are silent unless shown here (RAL ticket 087 S4 pilot note 4)
             print(f"WARN  {len(den)} tool calls were refused; the worker could not do them and may have narrowed its task. Tell the user:")
             for d in den:
                 inp = d.get("tool_input") or {}
@@ -291,7 +291,7 @@ def spinner_tokens(text):
 
 
 def progress(row):
-    """Signs of life of a Claude background worker (RAL 087 S4 pilot note 14): age of its transcript file and the
+    """Signs of life of a Claude background worker (RAL ticket 087 S4 pilot note 14): age of its transcript file and the
     spinner's output-token count on its screen. A long generation moves the tokens; a hang moves neither."""
     import glob as _g
     import time
@@ -321,8 +321,8 @@ def worker_ticket_dir(name, root):
 
 
 def ticket_line(name, root):
-    """'ticket PAPER1 007: stage Q, owes the user 10' for a worker named paper1-007, from its state.json; "" if none.
-    The harness says only whether the session's last turn ended; the ticket says whether the work is done (RAL 087 S4
+    """'ticket DEMO 007: stage Q, owes the user 10' for a worker named demo-007, from its state.json; "" if none.
+    The harness says only whether the session's last turn ended; the ticket says whether the work is done (RAL ticket 087 S4
     pilot note 16)."""
     d = worker_ticket_dir(name, root)
     if not d:
@@ -337,7 +337,7 @@ def ticket_line(name, root):
 
 
 def ticket_signature(name, root):
-    """Latest mtime under the ticket folder that a worker name like paper1-006 stands for, or None (RAL 087 S4 pilot
+    """Latest mtime under the ticket folder that a worker name like demo-006 stands for, or None (RAL ticket 087 S4 pilot
     note 13: a worker waiting on the user ends turns without changing anything)."""
     d = worker_ticket_dir(name, root)
     if not d:
@@ -355,12 +355,12 @@ def ticket_signature(name, root):
 def cmd_watch(a):
     """Wait on Claude background workers; exit (waking the session that runs this as a background command) on the first
     worker that waits at a permission dialog, finishes its turn, or is gone. notify_when_idle does not fire for a worker
-    stopped at a dialog, because it is not idle (RAL 087 S4 pilot note 5). Exit 0 on an event, 4 on the heartbeat."""
+    stopped at a dialog, because it is not idle (RAL ticket 087 S4 pilot note 5). Exit 0 on an event, 4 on the heartbeat."""
     import time
     names = [n for n in a.names.split(",") if n]
     start, seen_busy = time.time(), set()
     # waits already reported survive a re-arm, so a worker still at the same dialog does not wake us again at once;
-    # the next event for it is the dialog being answered (RAL 087 S4 pilot note 9)
+    # the next event for it is the dialog being answered (RAL ticket 087 S4 pilot note 9)
     seen_file = a.seen_file or os.path.join(os.path.expanduser(os.environ.get("AGENT_LOCK_DIR", "~/.agent_locks")), "watch_seen.json")
     try:
         with open(seen_file, encoding="utf-8") as f:
@@ -427,7 +427,7 @@ def cmd_watch(a):
 def cmd_whoami(a):
     """This session's name and id: the Claude process among this shell's ancestors, matched against `claude agents
     --json`. Write both into the ticket you own (`session`, `session_id`): the name changes when a session reopens, the
-    id does not (RAL 087 Q-17)."""
+    id does not (RAL ticket 087 Q-17)."""
     rows = agent_rows() or []
     bypid = {int(r["pid"]): r for r in rows if str(r.get("pid", "")).isdigit()}
     pid = os.getpid()
@@ -439,7 +439,7 @@ def cmd_whoami(a):
             else:
                 print(f"session    {r.get('name')}\nsession_id {r.get('sessionId')}\nkind       {r.get('kind')}")
             return
-        pid = qrispy_config.parent_pid(pid)  # /proc, else ps (macOS, RAL 089)
+        pid = qrispy_config.parent_pid(pid)  # /proc, else ps (macOS, RAL ticket 089)
         if pid is None or pid <= 1:
             break
     sys.exit("launch: this shell is not inside a Claude session that `claude agents --json` lists")

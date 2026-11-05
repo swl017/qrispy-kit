@@ -29,20 +29,20 @@ set -euo pipefail
 die() { echo "review_headless: $1" >&2; exit "${2:-1}"; }
 mode="${1:-}"; slug="${2:-}"; round="${3:-}"; flag="${4:-}"
 [ -n "$mode" ] && [ -n "$slug" ] && [ -n "$round" ] || die "usage: review_headless.sh start|finish <NNN-slug | <root>/NNN-slug> <round> [--dry-run]"
-LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # the kit's tools; the repository is found from the working folder (RAL 090)
+LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # the kit's tools; the repository is found from the working folder (RAL ticket 090)
 conf() { python3 -B "$LIB/qrispy_config.py" "$@"; }
 REPO=$(conf repo 2>&1) || die "${REPO#qrispy_config: }"
 cd "$REPO"
-sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }  # plain macOS has only shasum (RAL 090)
-# Ticket systems come from qrispy.json (RAL 089). A primary-system (here RAL) ticket is named by its slug; a ticket of
-# another system by its path, e.g. paper1-multi-view-smoother/tickets/001-paper1-planning (PAPER1 ticket 001, 2026-10-17).
-T=$(conf ticket-dir "$slug" 2>&1) || die "${T#qrispy_config: }"   # its reason: a bad slug, or no/malformed qrispy.json (RAL 089 rev1 A1-3)
+sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }  # plain macOS has only shasum (RAL ticket 090)
+# Ticket systems come from qrispy.json (RAL ticket 089). A primary-system (here RAL) ticket is named by its slug; a ticket of
+# another system by its path, e.g. side/tickets/001-planning (PAPER1 ticket 001, 2026-10-17).
+T=$(conf ticket-dir "$slug" 2>&1) || die "${T#qrispy_config: }"   # its reason: a bad slug, or no/malformed qrispy.json (RAL ticket 089 rev1 A1-3)
 P=$(conf primary-root)                         # its *.md files are the shared method documents
 SCR=$(conf review-scratch)
 [[ "$round" =~ ^[0-9]+$ ]] && [ "$round" -ge 1 ] || die "bad round: $round"
 [ -d "$T" ] || die "no such ticket directory: $T"
 # The deliverable named in state.json is frozen too when it is one existing file (it often lives outside the
-# ticket directory, as paper1-multi-view-smoother/ROADMAP.md does); a change to it discards the round.
+# ticket directory, as a project's ROADMAP.md does); a change to it discards the round.
 DELIV=$(python3 -c "import json,os,sys; d=json.load(open(sys.argv[1])).get('deliverable') or ''; print(d if os.path.isfile(d) else '')" "$T/state.json" 2>/dev/null || true)
 S="$SCR/$slug/rev$round"          # the reviewer prompt names this scratch directory
 J="$S/job"
@@ -95,7 +95,7 @@ PY
       cat "$S/guard_diff.txt"; die "a file inside $T (or the deliverable ${DELIV:-none}) changed during the round: the round is discarded (text kept as $S/rev$round.discarded.md)" 3
     fi
     echo "WARNING: shared $P/*.md files changed during the round (usually another session; check the times, then say so in the response):"
-    grep -o "$P/[A-Za-z0-9_./-]*\.md" "$S/guard_diff.txt" | sort -u | while read -r f; do python3 -c 'import os,sys,time; print("  " + time.strftime("%H:%M:%S", time.localtime(os.path.getmtime(sys.argv[1]))) + "  " + sys.argv[1])' "$f"; done  # was GNU-only `ls --time-style` (RAL 089)
+    grep -o "$P/[A-Za-z0-9_./-]*\.md" "$S/guard_diff.txt" | sort -u | while read -r f; do python3 -c 'import os,sys,time; print("  " + time.strftime("%H:%M:%S", time.localtime(os.path.getmtime(sys.argv[1]))) + "  " + sys.argv[1])' "$f"; done  # was GNU-only `ls --time-style` (RAL ticket 089)
   fi
   # 4b. working-tree status outside the ticket directory (warn only: other sessions also edit this tree, and the
   #     headless reviewer may run python3, which the git hook cannot see into)
@@ -189,7 +189,7 @@ record)
   [ -f "$S/guard_before.txt" ] || die "no frozen hashes for this round; run freeze first"
   [ ! -e "$T/rev$round.md" ] || die "$T/rev$round.md already exists"
   # The text may be the subagent transcript itself (JSONL, the Agent tool's output file): then take the
-  # message of its SubagentHandback call, which is the final report unindented (PAPER1 001 rev2, 2026-10-18).
+  # message of its SubagentHandback call, which is the final report unindented (PAPER1 ticket 001 rev2, 2026-10-18).
   python3 - "$txt" "$S/review_text.md" <<'PY' || die "could not read the review text from $txt" 4
 import json, sys
 src, out = sys.argv[1], sys.argv[2]

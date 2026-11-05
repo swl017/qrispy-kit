@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """qrispy — read-only status view of QRISPY tickets (RAL ticket 084, S3; named `qr` until 2026-10-15).
 
-    qrispy ls [--recent | --all | --parked] [--ral | --thesis | --paper1]   (--parked: grouped by revisit trigger)   one line per ticket (default: open tickets of both systems)
-    qrispy ls --tree [--all] [--ral | --thesis | --paper1]   project → parent → child tickets (state.json.parent, RAL 087), with each owning session and whether it runs
+    qrispy ls [--recent | --all | --parked] [--<system> ...]   (--parked: grouped by revisit trigger)   one line per ticket (default: open tickets of both systems)
+    qrispy ls --tree [--all] [--<system> ...]   project → parent → child tickets (state.json.parent, RAL ticket 087), with each owning session and whether it runs
     qrispy show <id>                        one ticket's status card (with its parent, its children, and whether the owning sessions run)
     qrispy inbox                            everything the user owes, across tickets
     qrispy cite <id>                        the ticket's citation boundary (CITE.md, else what exists)
     qrispy lint <id> | --repo               registry checks (PASS/FAIL lines); --repo checks memory-file sizes
-    qrispy questions --tree <id> [--html <out.html>]   every unanswered Q item of a ticket and its children on one decision page (RAL 087 Q-15)
+    qrispy questions --tree <id> [--html <out.html>]   every unanswered Q item of a ticket and its children on one decision page (RAL ticket 087 Q-15)
     qrispy dashboard --html <out.html>      one static page: what the user owes, running jobs, roadmap items and the tickets serving them, recent tickets (open it with Lavish)
 
-<id> is a number (`084`, `RAL 084`, `THESIS 017`, `PAPER1 001`) or a slug fragment. This tool reports; it never gates,
+<id> is a number (`084`, `DEMO 084`, `SIDE 017`, `DEMO 001`) or a slug fragment. This tool reports; it never gates,
 never writes a ticket file, and never rewrites an old state.json (`dashboard` writes only the page named by --html). Fields it cannot find are shown as `?`.
 Output is compact on purpose (agent-facing): no decoration, one item per line, counts first.
 """
@@ -20,12 +20,12 @@ import os
 import re
 import sys
 
-LIB = os.path.dirname(os.path.abspath(__file__))  # the kit's tools (RAL 090: they no longer live in the repository)
+LIB = os.path.dirname(os.path.abspath(__file__))  # the kit's tools (RAL ticket 090: they no longer live in the repository)
 sys.path.insert(0, LIB)
 sys.dont_write_bytecode = True  # no lib/__pycache__ from the import below
-import qrispy_config  # noqa: E402  ticket systems from qrispy.json (RAL 089)
+import qrispy_config  # noqa: E402  ticket systems from qrispy.json (RAL ticket 089)
 
-CFG = qrispy_config.load_or_exit()  # finds the repository from the working folder (RAL 090)
+CFG = qrispy_config.load_or_exit()  # finds the repository from the working folder (RAL ticket 090)
 REPO = CFG.repo
 ROOTS = CFG.abs_roots()
 SYSTEMS = CFG.names_alt()
@@ -33,19 +33,19 @@ V2_DATE = "2026-10-14"
 CLOSED_RE = re.compile(r"^[\W_]*(closed|superseded)\b", re.I)  # tolerate leading ⚠, **, etc.
 PARKED_RE = re.compile(r"\bparked\b", re.I)
 STALE_DAYS = 30
-KNOWN_DUP_NUMBERS = CFG.known_dups  # e.g. RAL 036-dual and 036-pm predate the check; always named by slug
-# Project roadmap ledger (RAL 086; tickets/QRISPY_METHOD.md §Project Roadmap)
+KNOWN_DUP_NUMBERS = CFG.known_dups  # e.g. RAL ticket 036-dual and 036-pm predate the check; always named by slug
+# Project roadmap ledger (RAL ticket 086; tickets/QRISPY_METHOD.md §Project Roadmap)
 LEDGER_ID = re.compile(r"^(Item|Claim|Exp|Gap|Decision|Risk)-\d+[a-z]?$")
 TICKET_REF = re.compile(rf"\b({SYSTEMS}) (\d{{3}})\b")
 ROADMAP_STATUSES = ("planned", "active", "done", "parked", "dropped")
 _ROADMAPS = {}
-# Parent and child tickets (RAL 087 Q-4): only the child names its parent, as "<SYSTEM> NNN"
+# Parent and child tickets (RAL ticket 087 Q-4): only the child names its parent, as "<SYSTEM> NNN"
 PARENT_RE = re.compile(rf"^({SYSTEMS}) (\d{{3}})$")
 LEGACY_PARENT_RE = re.compile(rf"^(?:({CFG.roots_alt()})/)?(\d{{3}})-[\w.-]+/?$")
 LEGACY_ROOTS = CFG.system_of_root
 TITLE_PREFIX_RE = re.compile(rf"^(?:(?:{CFG.names_alt(external=True)})\s*)?(?:ticket\s*)?\d+\s*[—:-]\s*", re.I)
 _AGENTS = []
-_SESSION_IDS = {}  # sessionId -> current name (RAL 087 Q-17: a name changes when a session reopens, its id does not)
+_SESSION_IDS = {}  # sessionId -> current name (RAL ticket 087 Q-17: a name changes when a session reopens, its id does not)
 
 
 def roadmap(system):
@@ -115,7 +115,7 @@ class Ticket:
 
     @property
     def triage(self):
-        """One-time triage record (RAL 084 S6): {"date", "decision": parked | closed-completed | closed-superseded | keep, "note", "revisit_when"}."""
+        """One-time triage record (RAL ticket 084 S6): {"date", "decision": parked | closed-completed | closed-superseded | keep, "note", "revisit_when"}."""
         tr = self.state.get("triage")
         return tr if isinstance(tr, dict) else {}
 
@@ -136,8 +136,8 @@ class Ticket:
 
     @property
     def parent(self):
-        """state.json.parent as "<SYSTEM> NNN" (RAL 087 Q-4); None when absent or empty. The pre-v2 forms, a slug
-        ("045-deploy-config-honesty", RAL 046) or a path ("thesis/tickets/011-…", THESIS 013), are read as the same ticket."""
+        """state.json.parent as "<SYSTEM> NNN" (RAL ticket 087 Q-4); None when absent or empty. The pre-v2 forms, a slug
+        ("045-some-slug", in the primary system) or a path ("side/tickets/011-…", in another), are read as the same ticket."""
         p = self.state.get("parent")
         if not (isinstance(p, str) and p.strip()):
             return None
@@ -233,7 +233,7 @@ class Ticket:
 
 
 def parent_problem(t, byid):
-    """What is wrong with t's parent link, or "" (RAL 087 S1). byid maps ticket IDs to tickets."""
+    """What is wrong with t's parent link, or "" (RAL ticket 087 S1). byid maps ticket IDs to tickets."""
     p = t.parent
     if p is None:
         return "" if t.state.get("parent") in (None, "") else f"parent is not a string: {t.state.get('parent')!r}"
@@ -261,7 +261,7 @@ def children(t, ts):
 
 
 def live_sessions():
-    """{name: status} of this machine's Claude sessions from `claude agents --json` (RAL 087 S1), or None when
+    """{name: status} of this machine's Claude sessions from `claude agents --json` (RAL ticket 087 S1), or None when
     that cannot be read. QRISPY_AGENTS_JSON=<file> replaces the call (tests). Only show, ls --tree and dashboard use it."""
     if not _AGENTS:
         import subprocess
@@ -310,7 +310,7 @@ GO_KEYS = ("q", "kind", "what", "max_hours", "max_runs", "out", "until")
 
 
 def go_problem(g):
-    """What is wrong with one state.json.go_scopes entry (RAL 087 Q-7), or ""."""
+    """What is wrong with one state.json.go_scopes entry (RAL ticket 087 Q-7), or ""."""
     if not isinstance(g, dict):
         return f"not an object: {g!r}"[:80]
     miss = [k for k in GO_KEYS if k not in g]
@@ -352,7 +352,7 @@ def go_usage(t, g, ts):
 
 
 def jobs(t):
-    """Jobs launched with `qrispy job run` (lib/jobs/run_job.sh) under <ticket>/jobs/<id>/ (RAL 084 Q-23).
+    """Jobs launched with `qrispy job run` (lib/jobs/run_job.sh) under <ticket>/jobs/<id>/ (RAL ticket 084 Q-23).
     Returns (id, status, detail) with status running | ended-unhandled | died | handled."""
     out = []
     for jj in sorted(glob.glob(os.path.join(t.path, "jobs", "*", "job.json"))):
@@ -419,7 +419,7 @@ def short(s, n):
 # --------------------------------------------------------------------------- commands
 
 def parked_groups(ts):
-    """Parked tickets grouped by their recorded revisit trigger (RAL 084 S6, T-2)."""
+    """Parked tickets grouped by their recorded revisit trigger (RAL ticket 084 S6, T-2)."""
     groups = {}
     for t in ts:
         if t.parked:
@@ -434,7 +434,7 @@ def cmd_ls(args):
         for k, v in groups.items():
             print(f"{k}: " + ", ".join(t.id for t in sorted(v, key=lambda t: (t.system, t.num))))
         return
-    systems = next(({n} for n in CFG.names if f"--{n.lower()}" in args), None)  # --ral, --thesis, --paper1 here
+    systems = next(({n} for n in CFG.names if f"--{n.lower()}" in args), None)  # --<system name in lower case>, e.g. --demo
     if "--tree" in args:
         return print_tree(load(), systems, "--all" in args)
     ts = load(systems)
@@ -459,7 +459,7 @@ def cmd_ls(args):
 
 
 def print_tree(ts, systems=None, show_all=False):
-    """Project → parent → child (RAL 087 S1). Only tickets in a parent relation; a finished branch (closed parent,
+    """Project → parent → child (RAL ticket 087 S1). Only tickets in a parent relation; a finished branch (closed parent,
     no open child) is folded unless --all."""
     byid = {t.id: t for t in ts}
     kids = {}
@@ -547,7 +547,7 @@ def cmd_show(args):
     deps = t.state.get("deps") if isinstance(t.state.get("deps"), list) else []
     print(f"deps      " + (", ".join(f"{d.get('on')}({d.get('kind')})" for d in deps if isinstance(d, dict)) or "-"))
     import datetime
-    for g in t.state.get("go_scopes") or []:  # scoped go (RAL 087 Q-7)
+    for g in t.state.get("go_scopes") or []:  # scoped go (RAL ticket 087 Q-7)
         prob = go_problem(g)
         if prob:
             print(f"go        WARN {prob}")
@@ -570,7 +570,7 @@ def cmd_show(args):
 
 
 def gpu_status():
-    """(state, one line) from lib/gpu_lock.py (RAL 087 S2), or None when the tool is missing."""
+    """(state, one line) from lib/gpu_lock.py (RAL ticket 087 S2), or None when the tool is missing."""
     path = os.path.join(LIB, "gpu_lock.py")
     if not os.path.exists(path):
         return None
@@ -584,7 +584,7 @@ def gpu_status():
 
 
 def away_line():
-    """'user away since 23:10 until 07:00' from lib/launch.py away (RAL 087 Q-16), or ""."""
+    """'user away since 23:10 until 07:00' from lib/launch.py away (RAL ticket 087 Q-16), or ""."""
     path = os.path.join(LIB, "launch.py")
     if not os.path.exists(path):
         return ""
@@ -651,7 +651,7 @@ CITE_JUDGED = re.compile(r"^- 판정: (\d{4}-\d{2}-\d{2})", re.M)
 
 
 def cite_staleness(t):
-    """Warn when the ticket moved after its citation boundary was judged (RAL 084 Q-26).
+    """Warn when the ticket moved after its citation boundary was judged (RAL ticket 084 Q-26).
 
     This is the one check the retired citation ledger did that mattered: a ticket record that moves
     after its posture was set needs a human to re-judge it. It warns; it never blocks or rewrites."""
@@ -706,7 +706,7 @@ def cite_addendum_gap(t):
 SENT_END = re.compile(r"[.!?:;)\]}`'\"。…>|]\s*$|다\.?\s*$|[가-힣]\)\s*$")
 
 
-RESPONSE_FORMAT_SINCE = "2026-10-18"  # point-by-point response format starts with reviews registered on or after this date (PAPER1 004 rev3, L-019 device)
+RESPONSE_FORMAT_SINCE = "2026-10-18"  # point-by-point response format starts with reviews registered on or after this date (PAPER1 ticket 004 rev3, RAL lesson L-019 device)
 
 
 def response_format(t):
@@ -814,7 +814,7 @@ def lint_ticket(t):
         detail = "; ".join(x for x in (("not in ROADMAP.md: " + ", ".join(unknown)) if unknown else "",
                                        ("dropped: " + ", ".join(dropped)) if dropped else "") if x)
         res.append(("warn" if detail else True, "roadmap: named items exist and are not dropped", detail))
-    if "parent" in t.state or any(x.parent == t.id for x in load()):  # parent and child tickets (RAL 087 S1)
+    if "parent" in t.state or any(x.parent == t.id for x in load()):  # parent and child tickets (RAL ticket 087 S1)
         ts = load()
         if "parent" in t.state:
             prob = parent_problem(t, {x.id: x for x in ts})
@@ -824,7 +824,7 @@ def lint_ticket(t):
             res.append(("warn", "children: a closed ticket has no open child", ", ".join(open_kids)))
         elif children(t, ts):
             res.append((True, "children: a closed ticket has no open child", ""))
-    if "go_scopes" in t.state:  # scoped go (RAL 087 Q-7)
+    if "go_scopes" in t.state:  # scoped go (RAL ticket 087 Q-7)
         gs = t.state.get("go_scopes")
         probs = [go_problem(g) for g in gs] if isinstance(gs, list) else ["go_scopes is not a list"]
         probs = [p for p in probs if p]
@@ -849,7 +849,7 @@ def lint_ticket(t):
         res.append((bool(re.search(r"위험도 카드|Risk card", body[:1500])), f"{f} opens with a risk card", ""))
         if f.startswith("y_slice"):
             res.append((bool(re.search(r"설계 대비 변경|Deviation from design", body)), f"{f} has a deviation-from-design section", ""))
-    by_slice = {}  # every drift entry needs a row in its slice note's deviation table (RAL 084 rev3 R3-A1: it recurred three times)
+    by_slice = {}  # every drift entry needs a row in its slice note's deviation table (RAL ticket 084 rev3 R3-A1: it recurred three times)
     for e in (t.state.get("drift") or []):
         if isinstance(e, dict) and isinstance(e.get("slice"), int):
             by_slice[e["slice"]] = by_slice.get(e["slice"], 0) + 1
@@ -879,15 +879,18 @@ def lint_repo():
             return None
         with open(p, encoding="utf-8") as f:
             return sum(1 for _ in f)
-    mem = os.path.join(qrispy_config.claude_project_dir(REPO), "memory", "MEMORY.md")  # was a fixed Linux path (RAL 089)
+    mem = os.path.join(qrispy_config.claude_project_dir(REPO), "memory", "MEMORY.md")  # was a fixed Linux path (RAL ticket 089)
     checks = [("~/.claude/CLAUDE.md (global memory)", "~/.claude/CLAUDE.md", 30),
               ("CLAUDE.md (project memory)", os.path.join(REPO, "CLAUDE.md"), 80),
               ("auto-memory MEMORY.md index", mem, 40)]
     res = []
     for name, p, cap in checks:
         n = nlines(p)
+        if n is None and name.startswith("~/.claude/CLAUDE.md"):  # a computer whose user keeps no personal rules (RAL ticket 090)
+            res.append((True, f"{name} ≤ {cap} lines", "none"))
+            continue
         res.append((n is not None and n <= cap, f"{name} ≤ {cap} lines", f"{n} lines" if n is not None else "missing"))
-    # the auto-memory line names the path it checked, and a machine with no memory yet passes (RAL 089 Q-7, Q-8)
+    # the auto-memory line names the path it checked, and a machine with no memory yet passes (RAL ticket 089 Q-7, Q-8)
     shown = "~" + mem[len(os.path.expanduser("~")):] if mem.startswith(os.path.expanduser("~") + os.sep) else mem
     n = res[-1]
     res[-1] = (True, n[1], f"none yet at {shown}") if nlines(mem) is None else (n[0], n[1], f"{n[2]} at {shown}")
@@ -898,7 +901,7 @@ def lint_repo():
         ok, detail = txt.startswith("---\n") and txt.count("---\n") >= 2, "no frontmatter block"
         if ok:
             try:
-                import yaml  # a broken frontmatter is silently dropped by Claude Code (LESSONS L-011)
+                import yaml  # a broken frontmatter is silently dropped by Claude Code (LESSONS RAL lesson L-011)
                 fm = yaml.safe_load(txt.split("---\n", 2)[1]) or {}
                 ok, detail = isinstance(fm, dict) and bool(fm.get("description")), "" if fm.get("description") else "no description"
             except ImportError:
@@ -906,7 +909,7 @@ def lint_repo():
             except Exception as e:  # noqa: BLE001
                 ok, detail = False, f"YAML error: {str(e).splitlines()[0][:80]}"
         res.append((ok, f"skill {name}: frontmatter parses and has a description", detail))
-    for system, root in ROOTS:  # two sessions opening tickets at once can pick the same number (RAL 084 Q-31)
+    for system, root in ROOTS:  # two sessions opening tickets at once can pick the same number (RAL ticket 084 Q-31)
         nums = {}
         for d in glob.glob(os.path.join(str(root), "[0-9][0-9][0-9]-*")):
             if os.path.isdir(d):
@@ -915,7 +918,7 @@ def lint_repo():
         dup = {n: v for n, v in nums.items() if len(v) > 1 and n not in known}
         detail = "; ".join(", ".join(sorted(v)) for v in dup.values()) or (f"known historic duplicates: {', '.join(sorted(known))}" if known else "")
         res.append(("warn" if dup else True, f"{system} ticket numbers are unique", detail))
-    kit = os.path.join(REPO, "tools", "agent_kit", "install.py")  # installed copies in ~/.claude vs the kit (RAL 084 Q-32)
+    kit = os.path.join(REPO, "tools", "agent_kit", "install.py")  # installed copies in ~/.claude vs the kit (RAL ticket 084 Q-32)
     if os.path.exists(kit):
         import importlib.util
         sys.dont_write_bytecode = True
@@ -923,15 +926,16 @@ def lint_repo():
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         rows = mod.check(os.path.expanduser("~"))
-        # a missing guard (hook copy, its registration, the deny rules) is a FAIL; a stale copy is a WARN (RAL 089 Q-4, L-041)
+        # a missing guard (hook copy, its registration, the deny rules) is a FAIL; a stale copy is a WARN (RAL ticket 089 Q-4, RAL lesson L-041)
         absent = [n for n, ok, d in rows if not ok and n != "global CLAUDE.md" and d.startswith(("not installed", "dangling", "missing", "unreadable"))]
         res.append((not absent, "agent kit: the git guard is installed in ~/.claude (hook copy, hook registration, deny rules)",
                     ("absent: " + "; ".join(absent) + " — run python3 tools/agent_kit/install.py --install") if absent else ""))
         diffs = [name for name, ok, _ in rows if not ok and name not in absent]
         res.append(("warn" if diffs else True, "agent kit: copies in ~/.claude match tools/agent_kit",
                     ("differs: " + "; ".join(diffs) + " — run python3 tools/agent_kit/install.py") if diffs else ""))
+    res.extend(kit_rows())
     byid = None
-    for system, _ in ROOTS:  # project roadmap ledgers (RAL 086)
+    for system, _ in ROOTS:  # project roadmap ledgers (RAL ticket 086)
         rm = roadmap(system)
         if rm is None:
             continue
@@ -943,7 +947,7 @@ def lint_repo():
         stale = [f"{i} ({', '.join(r['owners'])})" for i, r in rm.items()
                  if r["status"] in ("planned", "active") and r["owners"] and all(o in byid and byid[o].closed for o in r["owners"])]
         res.append(("warn" if stale else True, f"{system} ROADMAP.md: no planned/active row whose owning tickets are all closed", "; ".join(stale[:8])))
-    allts = load()  # parent and child tickets (RAL 087 S1)
+    allts = load()  # parent and child tickets (RAL ticket 087 S1)
     pmap = {t.id: t for t in allts}
     probs = [f"{t.id}: {p}" for t in allts for p in [parent_problem(t, pmap)] if p]
     res.append(("warn" if probs else True, "ticket parents exist, do not loop, and no open ticket sits under a closed parent", "; ".join(probs[:8])))
@@ -955,6 +959,37 @@ def lint_repo():
     res.append(("warn" if bad else True, "operating docs: a line saying where something was tested names its saved output",
                 "; ".join(bad[:8]) + (" — name the output file (evidence/…) on the same line, or drop the claim" if bad else "")))
     return res
+
+
+def kit_rows():
+    """Whether Claude Code on this computer loads the kit for this repository (RAL ticket 090 Q-10 C: the plugin is installed
+    for the user but turned on by the repository's settings; the guard is a user hook from the kit clone, for every repository).
+    A missing guard or plugin is a FAIL, as RAL ticket 089 Q-4 decided for the guard."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("qrispy_kit_install", os.path.join(os.path.dirname(qrispy_config.PLUGIN), "install.py"))
+    inst = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(inst)
+    rows = {name: (ok, d) for name, ok, d in inst.check()}
+    repo_s, user_s = {}, inst.read_json(os.path.join(inst.config_dir(), "settings.json"), {})
+    try:
+        with open(os.path.join(REPO, ".claude", "settings.json"), encoding="utf-8") as f:
+            repo_s = json.load(f)
+    except (OSError, ValueError):
+        pass
+    on_here = (repo_s.get("enabledPlugins") or {}).get(inst.PLUGIN_ID, (user_s.get("enabledPlugins") or {}).get(inst.PLUGIN_ID)) is True
+    deny = rows["deny rules for destructive git commands"][0] or all(r in ((repo_s.get("permissions") or {}).get("deny") or []) for r in inst.DENY)
+    need = [("marketplace", rows["marketplace qrispy-kit points at this clone"][0]), ("plugin installed", rows["plugin qrispy@qrispy-kit installed"][0]),
+            ("plugin turned on for this repository (.claude/settings.json enabledPlugins)", on_here),
+            ("guard hook from the kit clone", rows["guard hook registered from this clone (every repository)"][0]),
+            ("deny rules (user or repository settings)", deny)]
+    missing = [n for n, ok in need if not ok]
+    out = [(not missing, "qrispy kit: the guard hook and deny rules are set, and Claude Code loads the plugin here (core rules, skills)",
+            ("missing: " + "; ".join(missing) + f" — run python3 {os.path.join(os.path.dirname(qrispy_config.PLUGIN), 'install.py')} --install"
+             + ("; and `qrispy init` here" if not on_here else "")) if missing else "")]
+    for name in ("~/.local/bin/qrispy links to this clone", "no other guard registration beside this clone's", "plugin off for the user (repositories turn it on)"):
+        ok, d = rows[name]
+        out.append((True if ok else "warn", f"qrispy kit: {name}", d))
+    return out
 
 
 # A line that says where something ran ("tested on Linux", "macOS에서 9/9 통과") must name the saved output of that run
@@ -1021,10 +1056,10 @@ def _question_card(t, head, body, note="", base_title="", base_body=()):
 
 
 def open_questions(t):
-    """Unanswered Q items of ticket t as page cards (RAL 087 Q-15). Two sources: a block that ends in an empty answer
+    """Unanswered Q items of ticket t as page cards (RAL ticket 087 Q-15). Two sources: a block that ends in an empty answer
     line ('> 사용자 답:'), from the nearest '###'/'####' heading above it; and every `awaiting_user` entry that starts
     with Q-n, as the last block headed Q-n (a re-ask such as '#### Q-1 2라운드' often has no empty answer line;
-    PAPER1 003 pilot note 19)."""
+    PAPER1 ticket 003 pilot note 19)."""
     qp = os.path.join(t.path, "q_questions.md")
     if not os.path.exists(qp):
         return []
@@ -1062,7 +1097,7 @@ def open_questions(t):
 def cmd_questions(args):
     """qrispy questions --tree <id> [--html out.html]: every open Q item of a ticket and all tickets under it on one
     decision page (the plan-page decision template). Answers are recorded by the session that receives them, verbatim,
-    in each ticket's own q_questions.md (RAL 087 Q-15, Q-1)."""
+    in each ticket's own q_questions.md (RAL ticket 087 Q-15, Q-1)."""
     if len(args) < 2 or args[0] != "--tree":
         sys.exit("usage: qrispy questions --tree <id> [--html out.html]")
     html_out = None
@@ -1163,7 +1198,7 @@ def cmd_dashboard(args):
     alljobs = [(t, j) for t in ts for j in jobs(t)]
     jobitems = [(t, j) for t, j in alljobs if j[1] in ("ended-unhandled", "died", "unreadable")]
     running = [(t, j) for t, j in alljobs if j[1] == "running"]
-    gpu = gpu_status()  # RAL 087: GPU lock, workers stuck at a dialog, parent → child tree
+    gpu = gpu_status()  # RAL ticket 087: GPU lock, workers stuck at a dialog, parent → child tree
     live = live_sessions()
     by_session = {str(t.state.get("session")): t for t in active if t.state.get("session")}
     by_session.update({_SESSION_IDS[str(t.state["session_id"])]: t for t in active if str(t.state.get("session_id")) in _SESSION_IDS})
@@ -1216,7 +1251,7 @@ def cmd_dashboard(args):
         for t, (jid, _, detail) in running:
             h.append(f'<section class="card"><div class="head"><span class="tid">{esc(t.id)}</span><span class="tt">작업 {esc(jid)}</span><span class="meta">{esc(detail)}</span></div></section>')
 
-    if tree_roots:  # parent → child (RAL 087)
+    if tree_roots:  # parent → child (RAL ticket 087)
         def node(t, seen):
             kid = "".join(node(c, seen + (c.id,)) for c in sorted(kids.get(t.id, []), key=lambda c: c.num) if c.id not in seen)
             st = "closed" if t.closed else "parked" if t.parked else t.stage
@@ -1225,7 +1260,7 @@ def cmd_dashboard(args):
                     + (f"<ul>{kid}</ul>" if kid else "") + "</li>")
         h.append("<h2>상위 → 하위 티켓</h2>" + "".join(f'<section class="card"><ul class="items">{node(r, (r.id,))}</ul></section>' for r in sorted(tree_roots, key=lambda r: (r.system, r.num))))
 
-    for system, _ in ROOTS:  # roadmap ledger: which tickets serve which item (RAL 086)
+    for system, _ in ROOTS:  # roadmap ledger: which tickets serve which item (RAL ticket 086)
         rm = roadmap(system)
         if not rm:
             continue

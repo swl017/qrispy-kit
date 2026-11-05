@@ -2,19 +2,19 @@
 """gpu_lock — who is using this machine's GPU, for which ticket, and whether it is running or only held (RAL ticket 087, S2).
 
     gpu_lock.py status [--json]                               one line: free | running | held | ownerless (+ owner, since, note)
-    gpu_lock.py take --kind sim|train|other (--ticket "PAPER1 006" --session NAME | --job DIR) [--note TEXT]
+    gpu_lock.py take --kind sim|train|other (--ticket "DEMO 006" --session NAME | --job DIR) [--note TEXT]
     gpu_lock.py hold (--session NAME | --job DIR) [--note TEXT]   the run ended but the owner keeps the GPU (e.g. the sim stays up)
     gpu_lock.py note --session NAME TEXT                       change the one-line note
     gpu_lock.py release --session NAME [--force]              nobody uses the GPU any more (--force: user-approved, any owner)
 
-One GPU (RTX 3090) serves both Isaac Sim and IsaacLab training, so there is one lock, `gpu`, with a `kind` (RAL 087 Q-11).
+The machine's one GPU serves every kind of GPU work (a simulator, training), so there is one lock, `gpu`, with a `kind` (RAL ticket 087 Q-11).
 The lock warns, it never blocks a process: `take` refuses with exit code 3 and names the owner, and the caller asks the
 user (Q-6). States: `running` (a job under the lock is alive), `held` (between runs, the owner keeps it), free (no file).
 `ownerless`: running but the job is gone without DONE.json, or held by a session that is not running and silent for
 over 2 hours. Deleting an ownerless lock is the user's call (`release --force`).
 
-File: $AGENT_LOCK_DIR/gpu.json (default ~/.agent_locks/, outside every repository so mas_fieldtest, PegasusSimulator
-and IsaacLab work see the same lock). Writes hold an flock on gpu.lock and replace the file atomically.
+File: $AGENT_LOCK_DIR/gpu.json (default ~/.agent_locks/, outside every repository so that work in every repository
+on the machine sees the same lock). Writes hold an flock on gpu.lock and replace the file atomically.
 QRISPY_AGENTS_JSON=<file> replaces `claude agents --json` (tests).
 """
 import argparse
@@ -101,9 +101,9 @@ def job_alive(job):
             pid = int(f.read().strip())
     except (OSError, ValueError):
         return None
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # qrispy_config sits next to this file in the kit (RAL 090)
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # qrispy_config sits next to this file in the kit (RAL ticket 090)
     sys.dont_write_bytecode = True  # no lib/__pycache__ from the import below
-    import qrispy_config  # pid_alive: os.kill, not /proc, which macOS lacks (RAL 089); needs no qrispy.json
+    import qrispy_config  # pid_alive: os.kill, not /proc, which macOS lacks (RAL ticket 089); needs no qrispy.json
     return qrispy_config.pid_alive(pid)
 
 
@@ -127,7 +127,7 @@ def judge(d):
 
 
 def user_away():
-    """The away record from lib/launch.py away on (`qrispy worker away on`), or None (RAL 087 Q-16)."""
+    """The away record from lib/launch.py away on (`qrispy worker away on`), or None (RAL ticket 087 Q-16)."""
     try:
         with open(os.path.join(LOCK_DIR, "away.json"), encoding="utf-8") as f:
             d = json.load(f)
@@ -143,10 +143,10 @@ def from_job(job):
     folder, the session from its state.json (else $AGENT_SESSION, else "unknown")."""
     tdir = os.path.dirname(os.path.dirname(os.path.abspath(job)))
     root, slug = os.path.dirname(tdir), os.path.basename(tdir)
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # qrispy_config sits next to this file in the kit (RAL 090)
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # qrispy_config sits next to this file in the kit (RAL ticket 090)
     sys.dont_write_bytecode = True  # no lib/__pycache__ from the import below
-    import qrispy_config  # ticket systems from qrispy.json (RAL 089); loaded here so `status` needs no config
-    try:  # the repository is the one the job dir sits in, wherever the lock is taken from (RAL 090)
+    import qrispy_config  # ticket systems from qrispy.json (RAL ticket 089); loaded here so `status` needs no config
+    try:  # the repository is the one the job dir sits in, wherever the lock is taken from (RAL ticket 090)
         repo = qrispy_config.find_repo(os.path.abspath(job))
     except qrispy_config.ConfigError as e:
         sys.exit(f"gpu_lock: {e}")
@@ -209,7 +209,7 @@ def main(argv):
         if a.cmd == "take":
             away = user_away()
             if away:
-                print(f"gpu_lock: take refused — the user is away since {str(away.get('since'))[11:16]} (launch.py away); no new GPU run until they are back (RAL 087 Q-16).", file=sys.stderr)
+                print(f"gpu_lock: take refused — the user is away since {str(away.get('since'))[11:16]} (launch.py away); no new GPU run until they are back (RAL ticket 087 Q-16).", file=sys.stderr)
                 sys.exit(REFUSED)
             job = os.path.abspath(a.job) if a.job else ""
             if st in ("running", "held", "ownerless") and d.get("session") != a.session:

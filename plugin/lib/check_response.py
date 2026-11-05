@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check that a review response answers every finding of its review, one by one, with evidence.
 
-Device for LESSONS L-019 (five recurrences, the fifth PAPER1 ticket 004 rev3 B3-1: a response said
+Device for LESSONS RAL lesson L-019 (five recurrences, the fifth PAPER1 ticket 004 rev3 B3-1: a response said
 "fixed" while the same wording survived in two other places). User ruling 2026-10-18: every finding
 gets its own answer, and the same device covers document reviews and code reviews.
 

@@ -15,10 +15,10 @@ Decisions, printed as one JSON object on stdout:
               (`echo '...' | bash`); `su -c` and `script -c`; `find -exec/-execdir/-ok/-okdir`;
             command substitution `$(...)`, backticks and `<(...)`, also inside double quotes; backslash-newline continuations;
             git aliases (`-c alias.x=...`, `!` shell aliases, aliases in the repository's or user's git config), names case-insensitive.
-  ask   - git commit / git push, except commit on a wt/* branch inside a linked git worktree (RAL 084 Q-14),
+  ask   - git commit / git push, except commit on a wt/* branch inside a linked git worktree (RAL ticket 084 Q-14),
           which is allowed; a wt/* branch in an ordinary clone is still asked.
   (no decision) - a plain `git commit` when the user's own chat message, within the last 30 minutes, contains a line that is only
-          an approval such as `1,2,3 커밋` or `commit all`, with no later message cancelling it (RAL 084 Q-42). The hook
+          an approval such as `1,2,3 커밋` or `commit all`, with no later message cancelling it (RAL ticket 084 Q-42). The hook
           reads the session transcript given as `transcript_path`; only entries marked as the human's own count, never tool results,
           assistant text, summaries or messages from other sessions. The normal permission flow then applies, which the
           repository's `.claude/settings.json` allows for `git add` and `git commit`. `--amend`, `-a`/`--all` and `git push`
@@ -32,7 +32,7 @@ NOT covered (the written rules still apply; this list is examples, not a complet
   same command line; `git read-tree --reset -u` and other rarely used forms that overwrite the working tree;
   `git merge` / `git rebase` into main, which the repository rules reserve for the user but the hook does not ask about.
 
-Every deny / ask / allow is appended to ~/.claude/hooks/guard.log (the M1 detection path, RAL 084 Q-5).
+Every deny / ask / allow is appended to ~/.claude/hooks/guard.log (the M1 detection path, RAL ticket 084 Q-5).
 The permission rules in settings.json block the plain forms too; this hook catches the hidden ones.
 """
 import json
@@ -378,7 +378,7 @@ def unescape(text):
     return text.replace("\\n", "\n").replace("\\t", " ").replace("\\\\", "\\")
 
 
-# A plain commit is allowed when the user said so in chat (RAL 084 Q-42). The hook cannot see the chat, but PreToolUse
+# A plain commit is allowed when the user said so in chat (RAL ticket 084 Q-42). The hook cannot see the chat, but PreToolUse
 # input carries the session transcript path; user messages are the entries marked origin.kind == "human".
 TRANSCRIPT = None
 APPROVAL_WINDOW_S = 30 * 60

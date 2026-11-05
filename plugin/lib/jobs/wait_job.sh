@@ -11,7 +11,7 @@
 # While the user is away (launch.py away on) there is no heartbeat and an ending job is held until they are back.
 # Exit 4  --heartbeat only: the job is still running after that many seconds. The exit wakes the session so it
 #         can check on the job (job_status.sh) and start wait_job.sh again. The end-of-job wake alone never
-#         announces a stuck or silent run (LESSONS L-014); a heartbeat of 300 gives a check every five minutes.
+#         announces a stuck or silent run (LESSONS RAL lesson L-014); a heartbeat of 300 gives a check every five minutes.
 set -euo pipefail
 dir="${1:?usage: wait_job.sh <job_dir> [--poll s] [--heartbeat s]}"; poll=15; beat=0; shift
 while [ $# -gt 0 ]; do
@@ -31,7 +31,7 @@ print(f"log: {os.path.join(d, j.get('log', 'job.log'))}")
 print(f"after acting on it: qrispy job handled {d} \"<what was done>\"")
 EOF
 }
-# The user is away (`qrispy worker away on`, RAL 087 Q-16): no heartbeat, and a job that ends is kept
+# The user is away (`qrispy worker away on`, RAL ticket 087 Q-16): no heartbeat, and a job that ends is kept
 # for the return summary; the waiter exits only once the user is back.
 LAUNCH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../launch.py"
 away_active() { [ -f "$LAUNCH" ] && python3 -I "$LAUNCH" away active >/dev/null 2>&1; }
@@ -51,7 +51,7 @@ while :; do
     echo "JOB STILL RUNNING after $((SECONDS - t0)) s: $dir"; echo "check it: qrispy job status $dir [stream or output file]; then start qrispy job wait again with --heartbeat $beat"; exit 4
   fi
   p="$(cat "$dir/pid" 2>/dev/null || true)"
-  if [ -z "$p" ] || ! ps -p "$p" >/dev/null 2>&1; then  # ps, not /proc: macOS has no /proc (RAL 089)
+  if [ -z "$p" ] || ! ps -p "$p" >/dev/null 2>&1; then  # ps, not /proc: macOS has no /proc (RAL ticket 089)
     sleep 2; [ -f "$dir/DONE.json" ] && { hold_while_away "job $(basename "$dir") ended"; summary ENDED; exit 0; }   # it may have just finished
     hold_while_away "job $(basename "$dir") DIED without DONE.json"; summary DIED; exit 3
   fi

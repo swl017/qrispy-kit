@@ -11,7 +11,7 @@
 # and the agent adds HANDLED.json once it has acted on the result (--handled).
 #
 # Default mode detaches (setsid nohup, stdin closed): the job survives the agent session,
-# the SSH link and the terminal (tickets/SIM_STACK_RECIPE.md §5.x). --foreground runs it in the
+# the SSH link and the terminal (RAL ticket 084, its simulator recipe §5.x). --foreground runs it in the
 # current shell instead, for a command sent into a tmux pane where tmux already keeps it alive.
 #
 # Detaching means the launch command returns at once, so the harness cannot see the end.
@@ -22,12 +22,12 @@
 # --gpu <kind> (RAL ticket 087 S2): take the machine's GPU lock (`qrispy lock`, lib/gpu_lock.py) before starting, as the
 # job dir's ticket and that ticket's state.json session. If another owner holds it, nothing starts (exit 3): ask the user.
 # When the job ends the lock goes back to `held` (the sim may still be up); release it with gpu_lock.py when done.
-# --go "<ticket> Q-n" records which scoped go (state.json.go_scopes, RAL 087 Q-7) this run relies on, in job.json.
+# --go "<ticket> Q-n" records which scoped go (state.json.go_scopes, RAL ticket 087 Q-7) this run relies on, in job.json.
 set -euo pipefail
 
 die() { printf 'run_job: %s\n' "$*" >&2; exit 2; }
-now() { python3 -c 'import datetime; print(datetime.datetime.now().astimezone().isoformat(timespec="seconds"))'; }  # = GNU `date -Is`; BSD date has no -Is (RAL 089)
-alive() { [ -n "$1" ] && ps -p "$1" >/dev/null 2>&1; }  # /proc does not exist on macOS (RAL 089)
+now() { python3 -c 'import datetime; print(datetime.datetime.now().astimezone().isoformat(timespec="seconds"))'; }  # = GNU `date -Is`; BSD date has no -Is (RAL ticket 089)
+alive() { [ -n "$1" ] && ps -p "$1" >/dev/null 2>&1; }  # /proc does not exist on macOS (RAL ticket 089)
 json_str() { python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1"; }
 
 if [ "${1:-}" = "--handled" ]; then
@@ -47,7 +47,7 @@ if [ "${1:-}" = "--inner" ]; then  # internal: runs detached, owns DONE.json
   start=$(date +%s); got_signal=""
   "$@" & child=$!
   # Forward TERM/INT/HUP to the whole job, so killing the job leaves no orphans recording for hours
-  # (tickets/SIM_STACK_RECIPE.md §10.o). Detached, this shell leads its own process group.
+  # (RAL ticket 084, its simulator recipe §10.o). Detached, this shell leads its own process group.
   forward() {
     got_signal="$1"; trap '' TERM INT HUP
     if [ "$(ps -o pgid= -p $$ | tr -d ' ')" = "$$" ]; then kill -"$1" -- -$$ 2>/dev/null; else kill -"$1" "$child" 2>/dev/null; fi
@@ -59,7 +59,7 @@ if [ "${1:-}" = "--inner" ]; then  # internal: runs detached, owns DONE.json
   tmp="$(mktemp "$dir/.done.XXXXXX")"
   printf '{"exit_code": %d, "signal": %s, "ended": %s, "duration_s": %d}\n' "$rc" "$(json_str "$got_signal")" "$(json_str "$(now)")" "$(( $(date +%s) - start ))" > "$tmp"
   mv -f "$tmp" "$dir/DONE.json"   # atomic: a watcher never sees a half-written file
-  if [ -n "${RUN_JOB_GPU:-}" ]; then  # back to held: the owner may keep the sim up for the next run (RAL 087)
+  if [ -n "${RUN_JOB_GPU:-}" ]; then  # back to held: the owner may keep the sim up for the next run (RAL ticket 087)
     python3 -I "$(dirname "$0")/../gpu_lock.py" hold --job "$dir" >/dev/null 2>&1 || true
   fi
   exit "$rc"
@@ -99,17 +99,17 @@ self="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]
 if [ $fg -eq 1 ]; then
   set +e; "$self" --inner "$dir" -- "$@" 2>&1 | tee -a "$dir/job.log"; rc=${PIPESTATUS[0]}; exit "$rc"
 fi
-if command -v setsid >/dev/null 2>&1; then detach=(setsid); else  # macOS has no setsid(1): the same call from Python, keeping the pid (RAL 089)
+if command -v setsid >/dev/null 2>&1; then detach=(setsid); else  # macOS has no setsid(1): the same call from Python, keeping the pid (RAL ticket 089)
   detach=(python3 -c 'import os, sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])'); fi
 "${detach[@]}" nohup "$self" --inner "$dir" -- "$@" >> "$dir/job.log" 2>&1 < /dev/null &
 launcher=$!   # setsid and its Python stand-in exec in place: this is the job's pid once it runs
 for _ in 1 2 3 4 5 6 7 8 9 10; do [ -f "$dir/pid" ] && break; sleep 0.2; done
-if [ ! -f "$dir/pid" ] && [ ! -f "$dir/DONE.json" ]; then  # say so instead of printing "started … (pid ?)" (RAL 089)
-  if kill -0 "$launcher" 2>/dev/null; then   # slow to start (a loaded machine): not a failure (RAL 089 rev1 A1-4)
+if [ ! -f "$dir/pid" ] && [ ! -f "$dir/DONE.json" ]; then  # say so instead of printing "started … (pid ?)" (RAL ticket 089)
+  if kill -0 "$launcher" 2>/dev/null; then   # slow to start (a loaded machine): not a failure (RAL ticket 089 rev1 A1-4)
     echo "run_job: no pid file after 2 s; $(basename "$dir") may still be starting (pid $launcher): check it with qrispy job status" >&2
   else
     echo "run_job: $(basename "$dir") did not start; job.log:" >&2; tail -5 "$dir/job.log" >&2
-    if [ -n "$gpu" ]; then  # back to held, as at a normal end: the lock must not stay `running` for a dead job (RAL 089 rev2 A2-3)
+    if [ -n "$gpu" ]; then  # back to held, as at a normal end: the lock must not stay `running` for a dead job (RAL ticket 089 rev2 A2-3)
       python3 -I "$(dirname "$self")/../gpu_lock.py" hold --job "$dir" --note "job $(basename "$dir") did not start" >/dev/null 2>&1 || true
     fi
     exit 2

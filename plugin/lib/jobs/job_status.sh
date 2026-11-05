@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# job_status.sh — one-screen progress check of a run_job.sh job (RAL ticket 084, L-014).
+# job_status.sh — one-screen progress check of a run_job.sh job (RAL ticket 084, RAL lesson L-014).
 # A job's END wakes the session, but a stuck, silent or wrongly configured job never ends,
 # so check on it while it runs. Read-only.
 #
@@ -16,10 +16,10 @@ import datetime, json, os, sys, time
 d, watched = sys.argv[1], sys.argv[2:]
 j = json.load(open(os.path.join(d, "job.json")))
 now = datetime.datetime.now().astimezone()
-start = datetime.datetime.fromisoformat(j["started"]) if j.get("started") else None  # empty in jobs started on macOS before RAL 089
+start = datetime.datetime.fromisoformat(j["started"]) if j.get("started") else None  # empty in jobs started on macOS before RAL ticket 089
 done = os.path.join(d, "DONE.json")
 pid = open(os.path.join(d, "pid")).read().strip() if os.path.exists(os.path.join(d, "pid")) else ""
-def pid_alive(p):  # os.kill(pid, 0), not /proc: macOS has no /proc (RAL 089)
+def pid_alive(p):  # os.kill(pid, 0), not /proc: macOS has no /proc (RAL ticket 089)
     try:
         if int(p) <= 0:
             return False

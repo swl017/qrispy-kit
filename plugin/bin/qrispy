@@ -9,6 +9,7 @@ a symlink in ~/.local/bin) and runs the tool for the subcommand; the tools find 
     qrispy lock status | take | hold | note | release ...                 the machine's GPU lock (lib/gpu_lock.py)
     qrispy check-response <revN.md> <revN_response.md>                    review response format (lib/check_response.py)
     qrispy config repo | ticket-dir | primary-root | review-scratch | external-roots   (lib/qrispy_config.py)
+    qrispy init --system NAME [--root tickets] [--dry-run]               set up this repository for the kit (lib/init.py)
     qrispy rules                                                          print the core rules (Claude Code gets them from the
                                                                           plugin's SessionStart hook; Codex and other agents run this)
 """
@@ -16,7 +17,7 @@ import os
 import sys
 
 LIB = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "lib")
-PY = {"worker": "launch.py", "lock": "gpu_lock.py", "check-response": "check_response.py", "config": "qrispy_config.py"}
+PY = {"worker": "launch.py", "lock": "gpu_lock.py", "check-response": "check_response.py", "config": "qrispy_config.py", "init": "init.py"}
 JOB = {"run": "run_job.sh", "wait": "wait_job.sh", "status": "job_status.sh"}
 
 

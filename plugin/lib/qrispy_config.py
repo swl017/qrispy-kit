@@ -50,7 +50,7 @@ class Config:
         self.systems = [(s["name"], s["root"]) for s in data["systems"]]  # ordered; the first is the primary
         self.external = [(s["name"], os.path.expanduser(s["root"])) for s in data.get("external_systems") or []]
         self.known_dups = {k: set(v) for k, v in (data.get("known_duplicate_numbers") or {}).items()}
-        self.review_scratch = data["review_scratch"]  # required: no silent default (RAL 089 rev1 A1-3)
+        self.review_scratch = data["review_scratch"]  # required: no silent default (RAL ticket 089 rev1 A1-3)
         self.names = [n for n, _ in self.systems]
         self.root_of = dict(self.systems)
         self.system_of_root = {r: n for n, r in self.systems}
@@ -60,7 +60,7 @@ class Config:
         return [(n, os.path.join(self.repo, r)) for n, r in self.systems]
 
     def names_alt(self, external=False):
-        """Regex alternation of the system names, e.g. 'RAL|THESIS|PAPER1'."""
+        """Regex alternation of the system names, e.g. 'DEMO|SIDE|OTHER'."""
         return "|".join(re.escape(n) for n in self.names + ([n for n, _ in self.external] if external else []))
 
     def roots_alt(self):
@@ -68,12 +68,12 @@ class Config:
         return "|".join(re.escape(r) for r in sorted(self.system_of_root, key=len, reverse=True))
 
     def names_text(self):
-        """'RAL, THESIS or PAPER1'."""
+        """'DEMO, SIDE or OTHER'."""
         return self.names[0] if len(self.names) == 1 else ", ".join(self.names[:-1]) + " or " + self.names[-1]
 
     def system_of_dir(self, path):
         """The system whose ticket folder `path` (absolute, or ending in the folder) is; longest folder first,
-        since 'tickets' is also the end of 'thesis/tickets'. None when no folder matches."""
+        since 'tickets' is also the end of 'side/tickets'. None when no folder matches."""
         p = os.path.normpath(path).replace(os.sep, "/")
         for r in sorted(self.system_of_root, key=len, reverse=True):
             if p == r or p.endswith("/" + r):
@@ -139,7 +139,7 @@ def claude_project_dir(repo):
 
 
 def pid_alive(pid):
-    """Whether process `pid` exists, without /proc (macOS has none, RAL 089). A process of another user counts as alive."""
+    """Whether process `pid` exists, without /proc (macOS has none, RAL ticket 089). A process of another user counts as alive."""
     try:
         pid = int(pid)
         if pid <= 0:  # os.kill(0, 0) would signal our own process group
