@@ -101,7 +101,8 @@ def test_t3_tools_follow_the_config():
         assert rc == 1 and "<DEMO|SIDE> NNN" in out and "Traceback" not in out, out
         rc, out = run(r, QRISPY, "review", "start", "001-alpha", "1", "--dry-run")
         assert rc == 0 and "ticket work/tickets/001-alpha" in out and "scratch /tmp/qrispy-review-test/001-alpha/rev1" in out, out
-        assert "files to freeze: " in out and out.split("files to freeze:")[1].split()[0] == "3", out  # 2 ticket files + METHOD.md
+        n_method = len([f for f in os.listdir(os.path.join(KIT, "plugin", "method")) if f.endswith(".md")])
+        assert "files to freeze: " in out and out.split("files to freeze:")[1].split()[0] == str(3 + n_method), out  # 2 ticket files + METHOD.md + the kit's method files
         rc, out = run(r, QRISPY, "review", "start", "side/tickets/001-gamma", "1", "--dry-run")
         assert rc == 0 and "ticket side/tickets/001-gamma" in out, out
         rc, out = run(r, QRISPY, "review", "start", "work/tickets/001-alpha", "1", "--dry-run")

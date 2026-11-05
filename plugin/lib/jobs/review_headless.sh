@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # review_headless.sh — run one QRISPY review round in a separate headless Opus session
-# (RAL ticket 084, Q-36 and Q-38). It does the mechanical steps of the qrispy-review skill and
+# (RAL ticket 084, Q-36 and Q-38). It does the mechanical steps of the qrispy:review skill and
 # nothing that needs judgment: it never writes a response, a lesson or state.json.
 #
 #   review_headless.sh start  <NNN-slug> <round> [--dry-run]
@@ -12,7 +12,7 @@
 #   review_headless.sh freeze <NNN-slug> <round>
 #   review_headless.sh record <NNN-slug> <round> <text_file>
 #       the subagent route (PAPER1 ticket 001, 2026-10-18): freeze the same hashes before calling the
-#       qrispy-reviewer agent (.claude/agents/qrispy-reviewer.md, Opus, effort high) through the Agent tool;
+#       qrispy:reviewer agent (plugin/agents/reviewer.md, Opus, effort high) through the Agent tool;
 #       after it returns, run record with either its final message saved unchanged or the Agent tool's output
 #       file (the subagent transcript; record takes the SubagentHandback message from it), which does the
 #       same checks as finish and saves it verbatim. The subagent does not appear as a separate session.
@@ -47,18 +47,18 @@ DELIV=$(python3 -c "import json,os,sys; d=json.load(open(sys.argv[1])).get('deli
 S="$SCR/$slug/rev$round"          # the reviewer prompt names this scratch directory
 J="$S/job"
 MODEL="${REVIEW_MODEL:-claude-opus-5-5}"
-ALLOWED='Read Grep Glob Skill Bash(sha256sum:*) Bash(ls:*) Bash(cat:*) Bash(python3:*) Bash(find:*) Bash(wc:*) Bash(diff:*) Bash(grep:*) Bash(head:*) Bash(tail:*) Bash(mkdir:*) Bash(date:*) Bash(stat:*) Bash(readlink:*) Bash(cmp:*) Bash(git status:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(git worktree list:*) Bash(git branch:*)'
-DIRS="$HOME/.claude $SCR ${REVIEW_EXTRA_DIRS:-}"
+ALLOWED='Read Grep Glob Bash(sha256sum:*) Bash(shasum:*) Bash(qrispy:*) Bash(ls:*) Bash(cat:*) Bash(python3:*) Bash(find:*) Bash(wc:*) Bash(diff:*) Bash(grep:*) Bash(head:*) Bash(tail:*) Bash(mkdir:*) Bash(date:*) Bash(stat:*) Bash(readlink:*) Bash(cmp:*) Bash(git status:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(git worktree list:*) Bash(git branch:*)'
+DIRS="$HOME/.claude $SCR $(dirname "$LIB") ${REVIEW_EXTRA_DIRS:-}"   # + the plugin: the reviewer reads the kit method files
 while read -r x; do if [ -n "$x" ] && [ -d "$x" ]; then DIRS="$DIRS $x"; fi; done < <(conf external-roots)  # other repositories' tickets (MASF)
 
-snapshot() { { find "$T" -type f ! -name "rev${round}.md"; ls "$P"/*.md; if [ -n "$DELIV" ]; then echo "$DELIV"; fi; } | sort | xargs sha256; }
+snapshot() { { find "$T" -type f ! -name "rev${round}.md"; ls "$P"/*.md "$(dirname "$LIB")"/method/*.md; if [ -n "$DELIV" ]; then echo "$DELIV"; fi; } | LC_ALL=C sort | xargs sha256; }  # + the kit's method files the reviewer reads (RAL ticket 090)
 prompt_text() {
-  echo "qrispy-reviewer skill을 인자 \`$slug $round\`로 호출하라. 그 skill이 돌려주는 리뷰 전문을 한 글자도 바꾸지 말고 그대로 최종 답으로 출력하라. 네가 직접 리뷰를 쓰거나 고치거나 요약하지 마라."
+  echo "TICKET=$slug ROUND=$round"   # the session runs as the reviewer agent itself (--agent below); the fork skill is gone (RAL ticket 090 Q-5)
 }
 run_script_text() {
   echo '#!/usr/bin/env bash'
   echo "cd $REPO"
-  echo "claude -p \"\$(cat $S/prompt.txt)\" --model $MODEL --permission-mode default --disallowedTools \"Edit Write NotebookEdit\" --allowedTools \"$ALLOWED\" --add-dir $DIRS --output-format stream-json --verbose > $S/stream.jsonl 2> $S/err.txt"
+  echo "claude -p \"\$(cat $S/prompt.txt)\" --agent qrispy:reviewer --model $MODEL --permission-mode default --disallowedTools \"Edit Write NotebookEdit\" --allowedTools \"$ALLOWED\" --add-dir $DIRS --output-format stream-json --verbose > $S/stream.jsonl 2> $S/err.txt"
 }
 
 verify_and_save() {   # checks 2-4b, then saves the text verbatim as rev<round>.md (shared by finish and record)
@@ -68,14 +68,16 @@ verify_and_save() {   # checks 2-4b, then saves the text verbatim as rev<round>.
     cp "$R" "$S/rev$round.husk.md"; die "the returned text is a husk (no protocol block, no META block, or under 4 kB); kept as $S/rev$round.husk.md. Rerun, never pad it." 5
   fi
   # 3. attestation: the three hashes in the protocol block must match the files on disk now
-  stale=$(python3 - "$R" <<'PY'
-import hashlib, re, sys
+  stale=$(python3 - "$R" "$(dirname "$LIB")" <<'PY'
+import hashlib, os, re, sys
 txt = open(sys.argv[1]).read()
 block = txt.split("-->", 1)[0]
-bad = []
-for path, h in re.findall(r"^(\S+): ([0-9a-f]{64})$", block, re.M):
+found = dict(re.findall(r"^(\S+): ([0-9a-f]{64})$", block, re.M))
+bad = [k + "(missing)" for k in ("method/QRISPY_METHOD.md", "method/DEV_REVIEW_RECIPE.md", "AGENTS.md") if k not in found]  # REVIEW_PROMPT: a missing entry fails too (RAL ticket 090)
+for path, h in found.items():
+    real = os.path.join(sys.argv[2], path) if path.startswith("method/") else path  # kit method files live in the plugin (RAL ticket 090)
     try:
-        cur = hashlib.sha256(open(path, "rb").read()).hexdigest()
+        cur = hashlib.sha256(open(real, "rb").read()).hexdigest()
     except OSError:
         cur = "missing"
     if cur != h:
@@ -98,10 +100,10 @@ PY
   # 4b. working-tree status outside the ticket directory (warn only: other sessions also edit this tree, and the
   #     headless reviewer may run python3, which the git hook cannot see into)
   if [ -f "$S/status_before.txt" ]; then
-    git status --porcelain=v1 -uall 2>/dev/null | sort > "$S/status_after.txt" || true
-    if ! diff -q "$S/status_before.txt" "$S/status_after.txt" >/dev/null; then
+    git status --porcelain=v1 -uall 2>/dev/null | LC_ALL=C sort > "$S/status_after.txt" || true
+    if ! diff -q <(LC_ALL=C sort "$S/status_before.txt") "$S/status_after.txt" >/dev/null; then  # re-sort: a freeze made by an older script may use another locale's order (RAL ticket 089 rev3)
       echo "NOTE: git working-tree status changed during the round (other sessions, or the reviewer itself). Entries outside $T/:"
-      diff "$S/status_before.txt" "$S/status_after.txt" | grep '^[<>]' | grep -v " $T/" | head -15 || true
+      diff <(LC_ALL=C sort "$S/status_before.txt") "$S/status_after.txt" | grep '^[<>]' | grep -v " $T/" | head -15 || true
     fi
   fi
   cp "$R" "$T/rev$round.md"; cmp "$R" "$T/rev$round.md"
@@ -121,7 +123,7 @@ start)
   fi
   mkdir -p "$S"
   snapshot > "$S/guard_before.txt"
-  git status --porcelain=v1 -uall 2>/dev/null | sort > "$S/status_before.txt" || true
+  git status --porcelain=v1 -uall 2>/dev/null | LC_ALL=C sort > "$S/status_before.txt" || true
   prompt_text > "$S/prompt.txt"
   run_script_text > "$S/run.sh"; chmod +x "$S/run.sh"
   echo "frozen $(wc -l < "$S/guard_before.txt") file hashes at $(date '+%H:%M:%S')"
@@ -175,10 +177,10 @@ freeze)
   [ ! -e "$S/guard_before.txt" ] || die "this round is already frozen: $S (remove the scratch directory to start over)"
   mkdir -p "$S"
   snapshot > "$S/guard_before.txt"
-  git status --porcelain=v1 -uall 2>/dev/null | sort > "$S/status_before.txt" || true
+  git status --porcelain=v1 -uall 2>/dev/null | LC_ALL=C sort > "$S/status_before.txt" || true
   echo "subagent $(date '+%F %T')" > "$S/route.txt"
   echo "frozen $(wc -l < "$S/guard_before.txt") file hashes at $(date '+%H:%M:%S'); deliverable frozen: ${DELIV:-none}"
-  echo "now call the Agent tool: subagent_type qrispy-reviewer, prompt exactly: TICKET=$slug ROUND=$round"
+  echo "now call the Agent tool: subagent_type qrispy:reviewer, prompt exactly: TICKET=$slug ROUND=$round"
   echo "do not edit $T/, ${DELIV:-the deliverable} or $P/*.md until it returns; then save its final message unchanged and run:"
   echo "  qrispy review record $slug $round <file with the returned text>"
   ;;

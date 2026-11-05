@@ -1,0 +1,5 @@
+{
+  "name": "qrispy",
+  "description": "QRISPY ticket workflow: tickets, slices, independent review rounds, long-running jobs, a GPU lock, a guard against destructive git commands, and the always-loaded core rules.",
+  "author": {"name": "Seungwook Lee"}
+}

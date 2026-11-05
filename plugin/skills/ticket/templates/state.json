@@ -1,0 +1,21 @@
+{
+  "ticket_slug": "NNN-slug",
+  "current_stage": "Q",
+  "last_approved_stage": null,
+  "next_action": "",
+  "awaiting_user": [],
+  "drift": [],
+  "lesson_refs": [],
+  "session": null,
+  "session_id": null,
+  "roadmap_items": [],
+  "roadmap_note": null,
+  "parent": null,
+  "deliverable": "",
+  "slices_completed": [],
+  "slices_total": null,
+  "created": "YYYY-MM-DD",
+  "updated": "YYYY-MM-DD",
+  "reviews": [],
+  "post_closeout": []
+}

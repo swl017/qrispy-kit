@@ -1,0 +1,5 @@
+{
+  "name": "qrispy-kit",
+  "owner": {"name": "Seungwook Lee"},
+  "plugins": [{"name": "qrispy", "source": "./plugin", "description": "QRISPY ticket workflow (see README.md)"}]
+}

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TICKET 결정</title>
-<!-- plan-page decision template (RAL ticket 084 S6). Edit ONLY the JSON in #page-data and the <title>; the mechanics below are shared.
+<!-- plan-page decision template. Edit ONLY the JSON in #page-data and the <title>; the mechanics below are shared.
      Question fields: w (group heading), id, t (title), type: radio | check | resolved, ctx (2-3 lines), detail: [[label, text], ...] (behind 자세히),
      opts: [[value, label, description, recommended 0/1], ...], rev (optional Lavish revision id for new cards in a later round). -->
 <script type="application/json" data-lavish-revisions>
@@ -12,11 +12,11 @@
 </script>
 <script type="application/json" id="page-data">
 {
-  "title": "RAL NNN — 결정",
-  "ticket": "RAL NNN",
+  "title": "<SYSTEM> NNN — 결정",
+  "ticket": "<SYSTEM> NNN",
   "round": "1라운드",
-  "record_to": "tickets/NNN-slug/q_questions.md",
-  "queue_key": "ralNNN-decisions-r1",
+  "record_to": "<ticket root>/NNN-slug/q_questions.md",
+  "queue_key": "systemNNN-decisions-r1",
   "lead": ["무엇을 정해야 하고, 정하면 무엇이 진행되는지 한두 문장."],
   "questions": [
     { "w": "결정", "id": "Q-1", "t": "질문 한 줄", "type": "radio",

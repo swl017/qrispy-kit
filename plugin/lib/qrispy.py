@@ -635,7 +635,7 @@ def cmd_cite(args):
         with open(cp, encoding="utf-8") as f:
             sys.stdout.write(f.read())
         return
-    print(f"{t.id}: no CITE.md (citation boundary not migrated yet; RAL 084 S5)")
+    print(f"{t.id}: no CITE.md (citation boundary not written yet)")
     cs = t.get("claim_safe")
     if cs:
         print(f"state.json claim_safe: {short(cs, 400)}")
@@ -891,8 +891,8 @@ def lint_repo():
     shown = "~" + mem[len(os.path.expanduser("~")):] if mem.startswith(os.path.expanduser("~") + os.sep) else mem
     n = res[-1]
     res[-1] = (True, n[1], f"none yet at {shown}") if nlines(mem) is None else (n[0], n[1], f"{n[2]} at {shown}")
-    for sk in sorted(glob.glob(os.path.join(REPO, ".claude", "skills", "*", "SKILL.md"))):
-        name = os.path.basename(os.path.dirname(sk))
+    for sk in sorted(glob.glob(os.path.join(REPO, ".claude", "skills", "*", "SKILL.md")) + glob.glob(os.path.join(qrispy_config.PLUGIN, "skills", "*", "SKILL.md"))):  # + the kit's own (RAL ticket 090)
+        name = ("qrispy:" if sk.startswith(qrispy_config.PLUGIN) else "") + os.path.basename(os.path.dirname(sk))
         with open(sk, encoding="utf-8") as f:
             txt = f.read()
         ok, detail = txt.startswith("---\n") and txt.count("---\n") >= 2, "no frontmatter block"
@@ -948,8 +948,36 @@ def lint_repo():
     probs = [f"{t.id}: {p}" for t in allts for p in [parent_problem(t, pmap)] if p]
     res.append(("warn" if probs else True, "ticket parents exist, do not loop, and no open ticket sits under a closed parent", "; ".join(probs[:8])))
     a, c = os.path.join(REPO, "AGENTS.md"), os.path.join(REPO, "CLAUDE.md")
-    res.append((os.path.islink(a) and os.path.realpath(a) == os.path.realpath(c), "AGENTS.md is a symlink to CLAUDE.md", ""))
+    # AGENTS.md is how Codex and other agents read the same instructions; `qrispy init` creates it (RAL ticket 090, user 2026-11-05)
+    res.append((os.path.islink(a) and os.path.realpath(a) == os.path.realpath(c), "AGENTS.md is a symlink to CLAUDE.md (for Codex and other agents)",
+                "" if os.path.lexists(a) else "missing — ln -s CLAUDE.md AGENTS.md"))
+    bad = unbacked_run_claims(operating_docs())
+    res.append(("warn" if bad else True, "operating docs: a line saying where something was tested names its saved output",
+                "; ".join(bad[:8]) + (" — name the output file (evidence/…) on the same line, or drop the claim" if bad else "")))
     return res
+
+
+# A line that says where something ran ("tested on Linux", "macOS에서 9/9 통과") must name the saved output of that run
+# on the same line (lesson L-040 of RAL ticket 089, broken twice and promoted to this check, RAL ticket 090).
+RUN_CLAIM = re.compile(r"(?i)\b(tested|passe[sd]|runs?|ran) on (macOS|Linux|x86|aarch64|arm64|[A-Z][\w-]+ machine)"
+                       r"|(macOS|Linux|aarch64|x86|기계|컴퓨터)(와 [^ ]+)?에서 (\d+/\d+ )?(시험함|시험했|통과|돌려 보았|돌렸)")
+RUN_EVIDENCE = re.compile(r"evidence/|results/|\.(txt|out|log|jsonl|csv)\b")
+
+
+def operating_docs():
+    """The documents agents follow: READMEs under tools/ and docs/, the primary ticket root's *.md, CLAUDE.md."""
+    pats = ["tools/**/README.md", "docs/**/*.md", os.path.join(CFG.primary_root, "*.md"), "CLAUDE.md"]
+    return sorted({p for pat in pats for p in glob.glob(os.path.join(REPO, pat), recursive=True)})
+
+
+def unbacked_run_claims(paths):
+    out = []
+    for p in paths:
+        with open(p, encoding="utf-8", errors="replace") as f:
+            for i, line in enumerate(f, 1):
+                if RUN_CLAIM.search(line) and not RUN_EVIDENCE.search(line):
+                    out.append(f"{os.path.relpath(p, REPO)}:{i}")
+    return out
 
 
 def _table_opts(body):

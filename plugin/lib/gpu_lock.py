@@ -171,7 +171,7 @@ def line(d):
 
 
 def refuse(d, what):
-    print(f"gpu_lock: {what} refused — {line(d)}. Ask the user before going on (RAL 087 Q-6).", file=sys.stderr)
+    print(f"gpu_lock: {what} refused — {line(d)}. Ask the user before going on.", file=sys.stderr)
     sys.exit(REFUSED)
 
 

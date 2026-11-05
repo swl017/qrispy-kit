@@ -9,6 +9,8 @@ a symlink in ~/.local/bin) and runs the tool for the subcommand; the tools find 
     qrispy lock status | take | hold | note | release ...                 the machine's GPU lock (lib/gpu_lock.py)
     qrispy check-response <revN.md> <revN_response.md>                    review response format (lib/check_response.py)
     qrispy config repo | ticket-dir | primary-root | review-scratch | external-roots   (lib/qrispy_config.py)
+    qrispy rules                                                          print the core rules (Claude Code gets them from the
+                                                                          plugin's SessionStart hook; Codex and other agents run this)
 """
 import os
 import sys
@@ -26,6 +28,10 @@ def main(args):
     cmd, rest = (args[0], args[1:]) if args else ("", [])
     if cmd in ("-h", "--help", "help"):
         print(__doc__.strip())
+        return
+    if cmd == "rules":
+        with open(os.path.join(os.path.dirname(LIB), "rules", "CORE.md"), encoding="utf-8") as f:
+            sys.stdout.write(f.read())
         return
     if cmd in PY:
         run([sys.executable, "-B", os.path.join(LIB, PY[cmd])] + rest)

@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ko" data-lavish-annotate="off">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TICKET 결과</title>
+<!-- plan-page result template. Edit ONLY the JSON in #page-data and the <title>.
+     Copy every image the page shows into the same lavish/ folder and reference it by relative path.
+     Per result: id, title, figures [{src, caption}], table {caption, head [...], rows [[...]]}, claim (the one sentence that may be said, from the ticket's CITE.md or slice),
+     not_shown [what this result does NOT show], source (file §section). The user answers each result with 수용 / 질문 / 재실행 요청 and a note. -->
+<script type="application/json" data-lavish-revisions>
+[]
+</script>
+<script type="application/json" id="page-data">
+{
+  "title": "<SYSTEM> NNN — S? 결과",
+  "ticket": "<SYSTEM> NNN",
+  "round": "S? 결과",
+  "record_to": "<ticket root>/NNN-slug/y_slice_N.md",
+  "queue_key": "systemNNN-results-sN",
+  "lead": ["무엇을 확인해 달라는지 한두 문장."],
+  "risk": { "level": "중간", "changed": "무엇이 바뀌었나", "depends": "이 결과에 기대는 것", "evidence": "증거 파일", "look": "사용자가 볼 것" },
+  "results": [
+    { "id": "R-1", "title": "결과 한 줄", "source": "y_slice_N.md §2",
+      "figures": [{ "src": "fig_example.png", "caption": "그림 설명" }],
+      "table": { "caption": "핵심 표", "head": ["arm", "hits", "median CPA"], "rows": [["A", "8/8", "0.15 m"]] },
+      "claim": "인용해도 되는 문장 하나.",
+      "not_shown": ["이 결과가 보여 주지 않는 것."] }
+  ]
+}
+</script>
+<style>
+  :root {
+    --surface: #fcfcfb; --plane: #f4f4f1;
+    --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --ring: rgba(11,11,11,0.10);
+    --fill: #2a78d6; --fill-soft: rgba(42,120,214,0.10);
+    --good: #0ca30c; --warn: #b27a00; --crit: #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface: #1a1a19; --plane: #0d0d0d;
+      --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --ring: rgba(255,255,255,0.10);
+      --fill: #3987e5; --fill-soft: rgba(57,135,229,0.16);
+      --good: #3cc23c; --warn: #fab219; --crit: #e86161;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--plane); color: var(--ink); }
+  body { font: 15px/1.55 system-ui, -apple-system, "Noto Sans KR", sans-serif; }
+  .mono, code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.92em; }
+  main { max-width: 920px; margin: 0 auto; padding: 24px 16px 140px; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--ink-2); margin: 0 0 16px; }
+  .how { background: var(--surface); border: 1px solid var(--grid); border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; color: var(--ink-2); }
+  .how ol { margin: 6px 0 0; padding-left: 20px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 24px; }
+  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--grid); background: var(--surface); color: var(--ink); padding: 7px 12px; }
+  button.primary { background: var(--fill); border-color: var(--fill); color: #fff; font-weight: 600; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 28px 0 10px; }
+  .card { background: var(--surface); border: 1px solid var(--grid); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+  .card.done { border-color: var(--fill); }
+  .card.resolved { opacity: 0.75; }
+  .head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .qid { font-weight: 700; color: var(--fill); }
+  .qt { font-weight: 600; flex: 1 1 260px; min-width: 0; }
+  .state { font-size: 12px; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--grid); color: var(--muted); white-space: nowrap; }
+  .state.sel { color: var(--fill); border-color: var(--fill); }
+  .state.q { color: #fff; background: var(--good); border-color: var(--good); }
+  .state.chg { color: var(--warn); border-color: var(--warn); }
+  .ctx { color: var(--ink-2); margin: 6px 0 10px; }
+  details { margin: 0 0 10px; color: var(--ink-2); }
+  summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  details table { border-collapse: collapse; width: 100%; margin-top: 6px; font-size: 13.5px; }
+  details td, details th { border-top: 1px solid var(--grid); padding: 5px 6px; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+  .opts { display: grid; gap: 6px; }
+  .opt { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--grid); border-radius: 8px; cursor: pointer; }
+  .opt:has(input:checked) { border-color: var(--fill); background: var(--fill-soft); }
+  .opt input { margin-top: 4px; flex: none; }
+  .opt .l { min-width: 0; }
+  .opt .d { display: block; color: var(--ink-2); font-size: 13.5px; }
+  .rec { font-size: 11px; font-weight: 700; color: var(--good); border: 1px solid var(--good); border-radius: 4px; padding: 0 5px; margin-left: 6px; white-space: nowrap; }
+  textarea { width: 100%; margin-top: 8px; font: inherit; font-size: 14px; color: var(--ink); background: var(--plane); border: 1px solid var(--grid); border-radius: 8px; padding: 7px 9px; min-height: 38px; resize: vertical; }
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--grid); padding: 10px 16px; }
+  .bar .in { max-width: 920px; margin: 0 auto; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .meter { flex: 1 1 220px; min-width: 0; }
+  .meter .t { font-size: 13px; color: var(--ink-2); }
+  .track { height: 6px; background: var(--grid); border-radius: 99px; overflow: hidden; margin-top: 4px; }
+  .track > div { height: 100%; background: var(--fill); width: 0; transition: width .2s; }
+  #status { font-size: 13px; color: var(--ink-2); flex-basis: 100%; }
+  .risk { background: var(--surface); border: 1px solid var(--grid); border-left: 4px solid var(--warn); border-radius: 10px; padding: 10px 14px; margin: 0 0 20px; }
+  .risk.low { border-left-color: var(--good); } .risk.high { border-left-color: var(--crit); }
+  .risk dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 6px 0 0; }
+  .risk dt { color: var(--muted); font-size: 13px; } .risk dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  figure { margin: 10px 0; } figure img { max-width: 100%; height: auto; border: 1px solid var(--grid); border-radius: 8px; background: #fff; }
+  figcaption { color: var(--ink-2); font-size: 13.5px; margin-top: 4px; }
+  .tw { overflow-x: auto; } .kt { border-collapse: collapse; font-size: 13.5px; min-width: 100%; }
+  .kt th, .kt td { border-top: 1px solid var(--grid); padding: 5px 8px; text-align: left; white-space: nowrap; }
+  .kt caption { text-align: left; color: var(--muted); font-size: 13px; padding-bottom: 4px; }
+  .claim { border-left: 3px solid var(--fill); padding: 6px 10px; margin: 10px 0; background: var(--fill-soft); border-radius: 0 8px 8px 0; }
+  .not { color: var(--ink-2); font-size: 14px; margin: 6px 0 10px; padding-left: 20px; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title"></h1>
+  <p class="sub">기록 위치: <span class="mono" id="recordTo"></span>. 이 페이지의 답은 그 파일 끝에 원문 그대로 기록됩니다.</p>
+  <div id="lead"></div>
+  <div id="risk"></div>
+  <div class="how">
+    <strong>사용법</strong>
+    <ol>
+      <li>결과마다 <strong>수용</strong>, <strong>질문</strong>, <strong>재실행 요청</strong> 중 하나를 고르고, 필요하면 메모를 적으세요.</li>
+      <li>아래 <strong>답 대기열에 넣기</strong>를 누른 뒤 Lavish 상단의 <strong>Send</strong>로 보내세요. 일부만 답해도 됩니다.</li>
+    </ol>
+  </div>
+  <div id="cards"></div>
+</main>
+<div class="bar">
+  <div class="in">
+    <div class="meter">
+      <div class="t" id="count">0 / 0 답함</div>
+      <div class="track"><div id="fill"></div></div>
+    </div>
+    <button type="button" class="primary" id="queueBtn" disabled>답 대기열에 넣기</button>
+    <div id="status" role="status" aria-live="polite"></div>
+  </div>
+</div>
+<script>
+const P = JSON.parse(document.getElementById("page-data").textContent);
+const R = P.results;
+const CHOICES = [["accept", "수용"], ["question", "질문"], ["rerun", "재실행 요청"]];
+let queuedSnapshot = null;
+function el(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) { if (k === "class") e.className = v; else if (k === "text") e.textContent = v; else e.setAttribute(k, v); }
+  for (const k of kids) if (k != null) e.append(k);
+  return e;
+}
+document.getElementById("title").textContent = P.title;
+document.getElementById("recordTo").textContent = P.record_to;
+for (const s of P.lead || []) document.getElementById("lead").append(el("p", { class: "sub", text: s }));
+if (P.risk) {
+  const lv = P.risk.level || "";
+  const box = el("div", { class: "risk" + (lv.includes("낮") ? " low" : lv.includes("높") ? " high" : "") }, el("strong", { text: "위험도 카드 — " + lv }));
+  const dl = el("dl");
+  for (const [k, label] of [["changed", "바뀐 것"], ["depends", "이에 기대는 것"], ["evidence", "증거"], ["look", "볼 것"]]) if (P.risk[k]) dl.append(el("dt", { text: label }), el("dd", { text: P.risk[k] }));
+  box.append(dl); document.getElementById("risk").append(box);
+}
+function render() {
+  const root = document.getElementById("cards");
+  for (const r of R) {
+    const card = el("section", { class: "card", id: "card-" + r.id });
+    if (r.rev) card.setAttribute("data-lavish-revision", r.rev);
+    card.append(el("div", { class: "head" }, el("span", { class: "qid", text: r.id }), el("span", { class: "qt", text: r.title }), el("span", { class: "state", id: "st-" + r.id, text: "미답" })));
+    if (r.source) card.append(el("p", { class: "ctx" }, "출처: ", el("span", { class: "mono", text: r.source })));
+    for (const f of r.figures || []) card.append(el("figure", {}, el("img", { src: f.src, alt: f.caption || "" }), f.caption ? el("figcaption", { text: f.caption }) : null));
+    if (r.table) {
+      const tb = el("table", { class: "kt" });
+      if (r.table.caption) tb.append(el("caption", { text: r.table.caption }));
+      tb.append(el("tr", {}, ...r.table.head.map(h => el("th", { text: h }))));
+      for (const row of r.table.rows) tb.append(el("tr", {}, ...row.map(c => el("td", { text: c }))));
+      card.append(el("div", { class: "tw" }, tb));
+    }
+    if (r.claim) card.append(el("div", { class: "claim" }, el("strong", { text: "말할 수 있는 문장: " }), r.claim));
+    if (r.not_shown && r.not_shown.length) {
+      card.append(el("p", { class: "ctx", text: "이 결과가 보여 주지 않는 것" }));
+      card.append(el("ul", { class: "not" }, ...r.not_shown.map(s => el("li", { text: s }))));
+    }
+    const opts = el("div", { class: "opts" });
+    for (const [v, label] of CHOICES) {
+      const input = el("input", { type: "radio", name: r.id, value: v }); input.dataset.label = label;
+      opts.append(el("label", { class: "opt" }, input, el("span", { class: "l", text: label })));
+    }
+    card.append(opts);
+    card.append(el("textarea", { name: r.id + "-note", rows: "1", placeholder: "메모 (질문이나 재실행 요청이면 무엇을)" }));
+    root.append(card);
+  }
+  root.addEventListener("change", refresh); root.addEventListener("input", refresh);
+}
+function answerOf(r) {
+  const p = document.querySelector(`input[name="${r.id}"]:checked`);
+  const note = document.querySelector(`textarea[name="${r.id}-note"]`).value.trim();
+  if (!p && !note) return null;
+  return { id: r.id, title: r.title, response: p ? p.value + " = " + p.dataset.label : null, note: note || null };
+}
+function refresh() {
+  let n = 0; const snap = {};
+  for (const r of R) {
+    const a = answerOf(r); snap[r.id] = a ? JSON.stringify(a) : null; if (a) n++;
+    const st = document.getElementById("st-" + r.id); document.getElementById("card-" + r.id).classList.toggle("done", !!a);
+    const was = queuedSnapshot && queuedSnapshot[r.id] !== undefined;
+    if (was && queuedSnapshot[r.id] === snap[r.id]) { st.className = "state q"; st.textContent = "대기열에 들어감"; }
+    else if (queuedSnapshot && (a || was)) { st.className = "state chg"; st.textContent = "바뀜 · 다시 넣기 필요"; }
+    else if (a) { st.className = "state sel"; st.textContent = "선택됨 (이 페이지에만)"; }
+    else { st.className = "state"; st.textContent = "미답"; }
+  }
+  document.getElementById("count").textContent = `${n} / ${R.length} 답함`;
+  document.getElementById("fill").style.width = (100 * n / R.length) + "%";
+  document.getElementById("queueBtn").disabled = n === 0;
+}
+document.getElementById("queueBtn").addEventListener("click", async (e) => {
+  const items = R.map(answerOf).filter(Boolean);
+  if (!items.length) return;
+  const msg = `${P.ticket} ${P.round} 답 ${items.length}건. 각 항목을 ${P.record_to} 끝의 "사용자 답" 절에 원문대로 기록하라. 질문이면 답하고, 재실행 요청이면 무엇을 다시 돌릴지와 비용(GPU 여부, 예상 시간)을 먼저 보고하고 승인을 기다려라. 제출된 모든 ID(${items.map(i => i.id).join(", ")})를 처리했는지 대조한 뒤 항목별 receipt로 보고하라.`;
+  const status = document.getElementById("status");
+  if (window.lavish && typeof window.lavish.queuePrompt === "function") {
+    window.lavish.queuePrompt(msg, { tag: "tracked-batch", text: `${P.ticket} ${P.round} 답 ${items.length}건`, element: e.currentTarget, queueKey: P.queue_key, data: { ticket: P.ticket, items } });
+    queuedSnapshot = {}; for (const r of R) { const a = answerOf(r); queuedSnapshot[r.id] = a ? JSON.stringify(a) : undefined; }
+    status.textContent = `${items.length}건을 대기열에 넣었습니다. 상단의 Send로 보내세요.`;
+  } else {
+    try { await navigator.clipboard.writeText(msg + "\n\n" + JSON.stringify(items, null, 2)); status.textContent = "Lavish 밖에서 열려 있습니다. 답을 클립보드에 복사했으니 채팅에 붙여 넣으세요."; }
+    catch { status.textContent = "Lavish 밖에서 열려 있고 클립보드도 쓸 수 없습니다."; }
+  }
+  refresh();
+});
+render(); refresh();
+</script>
+</body>
+</html>

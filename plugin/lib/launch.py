@@ -2,7 +2,7 @@
 """launch — start and list the workers an orchestrating session runs for its child tickets (RAL ticket 087, S3).
 
     launch.py prompt   --ticket "PAPER1 005" --parent "PAPER1 003" --parent-session NAME --agent claude|codex|gemini --task TEXT [--headless]
-                       print the first prompt, filled from .claude/skills/orchestrate/templates/worker_prompt.md
+                       print the first prompt, filled from the plugin's skills/orchestrate/templates/worker_prompt.md
     launch.py claude-bg --ticket "PAPER1 005" --prompt-file F [--worktree] [--dry-run]
                        a Claude background session named paper1-005 (`claude --bg -n`); the user joins with `claude attach paper1-005`
     launch.py headless --agent claude|codex|gemini --job DIR --prompt-file F [--dry-run]
@@ -196,7 +196,7 @@ def cmd_result(a):
 
 
 LOCK_DIR = lambda: os.path.expanduser(os.environ.get("AGENT_LOCK_DIR", "~/.agent_locks"))  # noqa: E731
-AWAY_NOTICE = ("The user is away (launch.py away, RAL 087 Q-16). Finish the step you are on, then stop and wait. Until you are told the user "
+AWAY_NOTICE = ("The user is away (`qrispy worker away`). Finish the step you are on, then stop and wait. Until you are told the user "
                "is back, do not ask or notify the user and do not start a GPU run; leave anything for them as status lines or in your ticket files.")
 BACK_NOTICE = "The user is back (launch.py away off). Continue your task from where you stopped."
 
