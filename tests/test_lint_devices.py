@@ -6,6 +6,9 @@ PAPER1 ticket 003 rev2 A2-4), each on a scratch repository:
 - a revN_response.md that state.json.reviews does not register as the response of revN.md is a WARN;
 - a Q item that names another ticket's record file without a complete cross-ticket citation row is a FAIL while
   unanswered and a WARN once answered (RAL ticket 090 Q-14), and the message shows that ticket's CITE.md condition line.
+RAL ticket 090 S10 (Q-15; RAL lesson L-070 recur 4-5): a citation row that calls its quantity the same as the source's
+("같은 방식", "같은 양", "same definition", …) must name a reproduction script and its saved output under the citing
+ticket, and the output must have a line starting with PASS; FAIL while unanswered, WARN once answered.
 Run from the kit: python3 -I tests/test_lint_devices.py"""
 import json
 import os
@@ -16,6 +19,7 @@ import tempfile
 KIT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 QRISPY = os.path.join(KIT, "plugin", "bin", "qrispy")
 CITE_CHECK = "cross-ticket citations carry source row, condition line and definition"
+SAME_CHECK = "a citation row that calls its quantity the same as the source's names a passing reproduction check"
 
 
 def write(path, text):
@@ -254,11 +258,153 @@ def test_which_items_are_checked():
         shutil.rmtree(r)
 
 
+# --------------------------------------------------------------------------- same-quantity rows (L-070 recur 4-5, Q-15)
+
+FIELD4 = ("**다른 티켓 인용:**\n\n| 출처 (티켓, 파일, 행) | 조건 줄 (그 티켓 `CITE.md`) | 정의 (식, 추정량) | 재현 판정 (같은 양이라 적을 때: 스크립트, 출력) |\n"
+          "|---|---|---|---|\n")
+COND = '"결과는 corpus A에 의존한다"'
+# the PAPER1 003 Q-43 shape: a column called "the same method" as the source, with a definition that does not reproduce it
+SAME_DEF = "DEMO 002와 같은 방식: 중앙 수직 거리 ÷ 중앙 거리 ÷ 1.1774"
+
+
+def same_row(definition, repro="—", src="DEMO 002 `z_closeout.md` 57–58행"):
+    return Q38 + "\n\n" + FIELD4 + f"| {src} | {COND} | {definition} | {repro} |\n"
+
+
+def same_rows(out):
+    return [l for l in out.splitlines() if SAME_CHECK in l]
+
+
+def test_same_quantity_row_needs_a_passing_reproduction_check():
+    r = repo()
+    try:
+        ev = os.path.join(r, "tickets", "001-a", "evidence")
+        repro = "`evidence/repro.py`, `evidence/repro.out.txt`"
+        cases = [  # (reproduction cell, files to write {name: text} or None, expected reason)
+            ("—", None, "no reproduction script under this ticket"),
+            (repro, None, "not found under this ticket: evidence/repro.py, evidence/repro.out.txt"),
+            ("`evidence/repro.py`", {"repro.py": "print('PASS')\n"}, "no saved output of the reproduction script"),
+            (repro, {"repro.py": "x\n", "repro.out.txt": "per-axis 2.31 deg (published 2.31) PASS\n"}, "no line starting with PASS"),
+            (repro, {"repro.py": "x\n", "repro.out.txt": "corpus A: 2.597 deg FAIL\nFAIL\n"}, "the output has a FAIL line"),
+            (repro, {"repro.py": "x\n", "repro.out.txt": "PASS a\nFAIL b\n"}, "the output has a FAIL line"),
+            # a script and output in the source ticket are not this ticket's check
+            ("`../002-src/repro.py`, `../002-src/repro.out.txt`", {"../../002-src/repro.py": "x\n", "../../002-src/repro.out.txt": "PASS\n"},
+             "no reproduction script under this ticket (not found under this ticket: ../002-src/repro.py"),
+        ]
+        for cell, files, why in cases:
+            shutil.rmtree(ev, ignore_errors=True)
+            for name, text in (files or {}).items():
+                write(os.path.join(ev, name), text)
+            q_file(r, [item(1, same_row(SAME_DEF, cell))])
+            code, out = lint_run(r)
+            got = same_rows(out)
+            assert len(got) == 1 and got[0].startswith("FAIL") and "Q-1" in got[0] and why in got[0], (cell, why, got)
+            assert "'DEMO 002와 같은'" in got[0] and "unanswered" in got[0] and code == 1, got
+            assert cite_rows(out)[0].startswith("PASS"), out  # the S9 check is satisfied: only the new one fails
+        # a script and output under this ticket, output with a PASS line: PASS (path relative to the ticket or to the repo)
+        shutil.rmtree(ev, ignore_errors=True)
+        write(os.path.join(ev, "repro.py"), "x\n")
+        write(os.path.join(ev, "repro.out.txt"), "corpus A: 2.650 deg (published 2.65) PASS\nPASS\n")
+        for cell in (repro, "`tickets/001-a/evidence/repro.py` → `tickets/001-a/evidence/repro.out.txt`"):
+            q_file(r, [item(1, same_row(SAME_DEF, cell))])
+            code, out = lint_run(r)
+            got = same_rows(out)
+            assert len(got) == 1 and got[0].startswith("PASS"), (cell, got)
+            assert code == 0, out
+        # the paths may sit in another cell of the row (an old three-column table)
+        q_file(r, [item(1, Q38 + "\n\n" + FIELD + f"| DEMO 002 `z_closeout.md` | {COND} | {SAME_DEF}; 재현 {repro} |\n")])
+        assert same_rows(lint(r))[0].startswith("PASS"), lint(r)
+        q_file(r, [item(1, Q38 + "\n\n" + FIELD + f"| DEMO 002 `z_closeout.md` | {COND} | {SAME_DEF} |\n")])
+        assert same_rows(lint(r))[0].startswith("FAIL"), lint(r)
+    finally:
+        shutil.rmtree(r)
+
+
+def test_same_quantity_claims_detected_and_not():
+    r = repo()
+    try:
+        claims = ["DEMO 002와 같은 양 (중앙값 ÷ 1.1774)", "같은 정의: 중앙값 ÷ 1.1774", "중앙값 ÷ 1.1774, DEMO 002의 정의와 같다",
+                  "DEMO 002 식 그대로 (정의 그대로)", "the same quantity as DEMO 002: median ÷ 1.1774",
+                  "median ÷ 1.1774, same definition", "identical to DEMO 002", "출처와 동일한 계산"]
+        for c in claims:
+            q_file(r, [item(1, same_row(c))])
+            got = same_rows(lint(r))
+            assert len(got) == 1 and got[0].startswith("FAIL"), (c, got)
+        not_claims = ["중앙값(수직 거리 ÷ 거리) ÷ 1.1774, 기록 ray의 EKF 원점",
+                      "DEMO 002와 같은 양이 아니다 (원점이 다름)", "같은 양이 아님: 42 m 하나로 나눔",
+                      "not the same quantity: per-ray range", "median ÷ 1.1774 (same as above)", "<식, 추정량, 원점, corpus>"]
+        for c in not_claims:
+            q_file(r, [item(1, same_row(c))])
+            assert not same_rows(lint(r)), (c, lint(r))
+        # a sameness phrase only in the condition cell is the source's own text, not this row's claim
+        q_file(r, [item(1, Q38 + "\n\n" + FIELD4 + "| DEMO 002 `z_closeout.md` | \"corpus A와 같은 방식으로 잰 값\" | 중앙값 ÷ 1.1774 | — |\n")])
+        assert not same_rows(lint(r)), lint(r)
+        # a not-a-citation row is not checked
+        q_file(r, [item(1, "DEMO 002 `CITE.md` 행 3을 고칠까?\n\n" + FIELD4 + "| DEMO 002 `CITE.md` | 인용 아님: 같은 방식으로 고친다 | 같은 방식 | — |\n")])
+        assert not same_rows(lint(r)), lint(r)
+        # the template's placeholder row is not a claim
+        q_file(r, [item(1, Q38 + "\n\n" + FIELD4 + "| <SYSTEM NNN `CITE.md` 행 N> | <\"…\"> | <식, 추정량> | <`evidence/….py`, `evidence/….out.txt`, 또는 —> |\n")])
+        assert not same_rows(lint(r)), lint(r)
+        # a claim outside the citation field (prose, an options table) is a known limit: unseen
+        q_file(r, [item(1, Q38 + "\n\n| 안 | 내용 |\n|---|---|\n| a | DEMO 002와 같은 방식의 열 |\n\n" + FIELD4
+                        + f"| DEMO 002 `z_closeout.md` | {COND} | 중앙값 ÷ 1.1774 | — |\n")])
+        assert not same_rows(lint(r)), lint(r)
+    finally:
+        shutil.rmtree(r)
+
+
+def test_same_quantity_which_items_are_checked():
+    r = repo()
+    try:
+        q_file(r, [
+            item(1, same_row(SAME_DEF), answer=" \"Q-1 권고\"", date="2026-11-07"),   # answered before the cut: history
+            item(2, same_row(SAME_DEF), answer=" \"Q-2 권고\"", date="2026-11-09"),   # answered after: a warning
+            item(3, same_row(SAME_DEF), date="2026-10-01"),                            # unanswered: FAIL, whatever its date
+        ])
+        code, out = lint_run(r)
+        got = same_rows(out)
+        assert len(got) == 2 and "Q-2" in got[0] and "Q-3" in got[1], got
+        assert got[0].startswith("WARN") and "answered;" in got[0], got
+        assert got[1].startswith("FAIL") and "unanswered" in got[1] and code == 1, got
+        q_file(r, [item(2, same_row(SAME_DEF), answer=" \"Q-2 권고\"", date="2026-11-09")])
+        code, out = lint_run(r)
+        assert same_rows(out)[0].startswith("WARN") and code == 0, out
+        # a closed ticket is not checked
+        q_file(r, [item(1, same_row(SAME_DEF))])
+        ticket(r, "tickets/001-a", stage="closed")
+        write(os.path.join(r, "tickets", "001-a", "z_closeout.md"), "# closeout\n\n> 위험도 카드\n")
+        assert not same_rows(lint(r)), lint(r)
+    finally:
+        shutil.rmtree(r)
+
+
+def test_field_marked_none_has_no_table():
+    """S8 read the next table of the item (its options) as the field when the field line said 없음 (RAL ticket 090 S10)."""
+    r = repo()
+    try:
+        options = ("| 안 | 내용 | 비고 |\n|---|---|---|\n"
+                   "| DEMO 002 `z_closeout.md`와 같은 설정 | corpus A로 잰다 | 같은 방식 |\n")
+        q_file(r, [item(1, Q38 + "\n\n**다른 티켓 인용:** 없음 (이 항목은 이 티켓의 측정만 쓴다)\n\n" + options)])
+        out = lint(r)
+        got = cite_rows(out)
+        assert len(got) == 1 and got[0].startswith("FAIL") and "no row for this ticket in the field" in got[0], got
+        assert not same_rows(out), out  # the options table is not checked as citation rows
+        # the field line in English
+        q_file(r, [item(1, Q38 + "\n\n**Cross-ticket citations:** none\n\n" + options)])
+        got = cite_rows(lint(r))
+        assert len(got) == 1 and got[0].startswith("FAIL") and "no row for this ticket in the field" in got[0], got
+    finally:
+        shutil.rmtree(r)
+
+
 def test_template_carries_the_field():
     with open(os.path.join(KIT, "plugin", "skills", "ticket", "templates", "q_questions.md"), encoding="utf-8") as f:
         t = f.read()
     assert "**다른 티켓 인용:**" in t and "| 출처 (티켓, 파일, 행) | 조건 줄" in t and "정의 (식, 추정량)" in t, t
     assert t.index("**다른 티켓 인용:**") < t.index("**권고:**")  # written before the user reads the recommendation
+    # the reproduction column (Q-15) and the instruction that a same-quantity row names a script and its output
+    assert "| 재현 판정 (같은 양이라 적을 때: 스크립트, 출력) |\n|---|---|---|---|" in t, t
+    assert "`evidence/<이름>.out.txt`" in t and "PASS로 시작하는 줄" in t, t
 
 
 if __name__ == "__main__":

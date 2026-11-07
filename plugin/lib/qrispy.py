@@ -757,6 +757,21 @@ CROSS_CITE_PROCESS = {"ticket.md", "q_questions.md", "state.json", "p_plan.md", 
                       "CLAUDE.md", "AGENTS.md", "METHOD_LOCAL.md"}  # working files that hold no numbers or definitions
 CROSS_CITE_FIELD = re.compile(r"^\*\*(?:다른 티켓 인용|Cross-ticket citations?)\b[^*]*\*\*", re.M | re.I)
 CROSS_CITE_NONE = re.compile(r"^\s*(?:인용 아님|not a citation)\b", re.I)
+# Same-quantity claims (RAL lesson L-070 recur 4-5, PAPER1 ticket 003 rev5 B5-1, rev6 B6-1, rev7 A7-2; RAL ticket 090 Q-15):
+# a citation row that says this ticket's quantity is the same as the source's must name a reproduction check, a script
+# and its saved output under the citing ticket that recompute the source's value from the source's data with the
+# stated definition; the output needs a line that starts with PASS (and none that starts with FAIL).
+SAME_QTY = re.compile(r"(?:같은|동일한|똑같은)\s?(?:방식|양|정의|계산|식|추정량|방법|공식)"
+                      r"|(?:정의|식|방식|계산|추정량) 그대로"
+                      rf"|(?:\b(?:{CFG.names_alt(external=True)})(?: ticket)? \d{{3}}|출처)(?:\S*\s){{0,2}}?\S*?(?:와|과)\s?(?:같다|같음|같은|동일)"
+                      r"|\b(?:same|identical)\s+(?:quantity|definition|method|computation|estimator|formula|metric)\b"
+                      rf"|\b(?:same as|identical to|equivalent to)\s+(?:(?:the|that of)\s+)?(?:source\b|(?:{CFG.names_alt(external=True)})(?: ticket)? \d{{3}})", re.I)
+SAME_QTY_NOT_AFTER = re.compile(r"^\s?(?:[^\s|]{0,4}?(?:이|가))?\s?(?:아니|아님|아닌|않)")  # "같은 양이 아니다": it differs
+SAME_QTY_NOT_BEFORE = re.compile(r"\bnot\s+(?:the\s+)?$", re.I)       # "not the same quantity"
+REPRO_SCRIPT_EXT = (".py", ".sh", ".bash", ".r", ".jl", ".m", ".js", ".ts", ".ipynb")
+REPRO_PATH = re.compile(r"`([^`\s]+\.[A-Za-z0-9]{1,6})`")
+CROSS_CITE_CHECK = "cross-ticket citations carry source row, condition line and definition"
+SAME_QTY_CHECK = "a citation row that calls its quantity the same as the source's names a passing reproduction check"
 Q_HEAD = re.compile(r"^#{2,4} Q-?\d+\b.*$", re.M)
 Q_ANSWERED = re.compile(r"^(?:>\s*(?:사용자|user)[^:\n]*:[ \t]*\S|결정:|Decision:)", re.M | re.I)
 
@@ -776,6 +791,9 @@ def cross_cite_rows(body):
     """Data rows of every cross-ticket citation field table in a Q item, as lists of cell strings."""
     rows = []
     for m in CROSS_CITE_FIELD.finditer(body):
+        # "**다른 티켓 인용:** 없음 (…)" has no table; the next table of the item (its options) is not the field's (RAL ticket 090 S10)
+        if re.match(r"[ \t]*(?:없음|none)\b", body[m.end():], re.I):
+            continue
         table = []
         for line in body[m.end():].split("\n")[1:]:
             s = line.strip()
@@ -820,6 +838,69 @@ def cross_cite_problems(t, body):
     return out
 
 
+def same_qty_claim(text):
+    """The first phrase of a cell that says the quantity is the same as the source's, or None."""
+    for m in SAME_QTY.finditer(text):
+        if SAME_QTY_NOT_AFTER.match(text[m.end():]) or SAME_QTY_NOT_BEFORE.search(text[:m.start()]):
+            continue
+        return m.group(0)
+    return None
+
+
+def repro_check(t, row):
+    """'' when the row names a script and a saved output under ticket t whose text has a line starting with PASS
+    (and none starting with FAIL); otherwise what is missing."""
+    here = os.path.realpath(t.path)
+    found, missing = {"script": [], "output": []}, []
+    # the source and condition cells name the source's files; the check is in the definition or reproduction cell
+    for p in dict.fromkeys(m.group(1) for c in row[2:] for m in REPRO_PATH.finditer(c)):
+        kind = "script" if p.lower().endswith(REPRO_SCRIPT_EXT) else "output"
+        hit = None
+        for base in (t.path, REPO):
+            q = os.path.realpath(os.path.join(base, p))
+            if (q == here or q.startswith(here + os.sep)) and os.path.isfile(q):
+                hit = q
+                break
+        if hit:
+            found[kind].append(hit)
+        else:
+            missing.append(p)
+    gone = f" (not found under this ticket: {', '.join(missing[:3])})" if missing else ""
+    if not found["script"]:
+        return "no reproduction script under this ticket" + gone
+    if not found["output"]:
+        return "no saved output of the reproduction script under this ticket" + gone
+    verdicts = []
+    for q in found["output"]:
+        with open(q, encoding="utf-8", errors="replace") as f:
+            lines = f.read().splitlines()
+        verdicts.append((any(re.match(r"\s*PASS\b", l) for l in lines), any(re.match(r"\s*FAIL\b", l) for l in lines),
+                         os.path.relpath(q, t.path)))
+    if any(fl for _, fl, _ in verdicts):
+        return "the output has a FAIL line: " + ", ".join(n for _, fl, n in verdicts if fl)
+    if not any(ok for ok, _, _ in verdicts):
+        return "the output has no line starting with PASS: " + ", ".join(n for _, _, n in verdicts)
+    return ""
+
+
+def same_qty_problems(t, body):
+    """(rows checked, [(row label, claim, what is missing)]) for citation rows that claim the source's quantity."""
+    blank = lambda c: not c or c in ("-", "—", "?", "…") or bool(re.fullmatch(r"<[^>]*>", c))
+    n, out = 0, []
+    for r in cross_cite_rows(body):
+        if len(r) >= 2 and CROSS_CITE_NONE.match(r[1]):
+            continue
+        # the condition cell (second) is a verbatim copy of the source's CITE.md line, so its words are not this row's claim
+        claim = next((c for c in (same_qty_claim(x) for k, x in enumerate(r) if k != 1 and not blank(x)) if c), None)
+        if not claim:
+            continue
+        n += 1
+        why = repro_check(t, r)
+        if why:
+            out.append((short(r[0], 60), claim, why))
+    return n, out
+
+
 def cross_cite(t, files):
     """Per Q item that cites another ticket's record without a complete citation field (RAL lesson L-070): FAIL while the
     item is unanswered (the user must not read it without the field), WARN once answered (RAL ticket 090 Q-14)."""
@@ -830,7 +911,7 @@ def cross_cite(t, files):
     m = re.search(r"작성:\s*(\d{4}-\d{2}-\d{2})|Written:\s*(\d{4}-\d{2}-\d{2})", text[:600])
     file_date = (m.group(1) or m.group(2)) if m else ""
     byid = None
-    res, checked = [], 0
+    res, checked, same_checked = [], 0, 0
     for head, body in q_items(text):
         d = re.search(r"\d{4}-\d{2}-\d{2}", head)
         date = d.group(0) if d else file_date
@@ -838,6 +919,16 @@ def cross_cite(t, files):
         if answered and date < CROSS_CITE_SINCE:
             continue
         checked += bool(cross_cited(t, body))
+        qid = re.search(r"Q-?\d+", head).group(0)
+        n_same, same = same_qty_problems(t, body)
+        same_checked += n_same
+        if same:
+            res.append(("warn" if answered else False, f"q_questions.md {qid}: {SAME_QTY_CHECK}",
+                        ("answered; " if answered else "unanswered, so the user must not read it yet; ")
+                        + "; ".join(f"row {lab!r} says {claim!r}: {why}" for lab, claim, why in same)
+                        + ". Name the script and its saved output (under this ticket, e.g. `evidence/<name>.py` and "
+                          "`evidence/<name>.out.txt`) in the row's 재현 판정 cell; the script recomputes the source's value from "
+                          "the source's data with the stated definition and prints PASS. Without one, do not call it the same quantity"))
         probs = cross_cite_problems(t, body)
         if not probs:
             continue
@@ -854,12 +945,13 @@ def cross_cite(t, files):
             elif src:
                 cond = "; it has no CITE.md (ask the user before quoting it)"
             hints.append(f"{ref}: {why}{cond}")
-        qid = re.search(r"Q-?\d+", head).group(0)
-        res.append(("warn" if answered else False, f"q_questions.md {qid}: cross-ticket citations carry source row, condition line and definition",
+        res.append(("warn" if answered else False, f"q_questions.md {qid}: {CROSS_CITE_CHECK}",
                     ("answered; " if answered else "unanswered, so the user must not read it yet; ") + "; ".join(hints) + ". Add the **다른 티켓 인용:** table (q_questions.md template), or a row "
                                         "'| <ticket file> | 인용 아님: <why> | — |' when nothing is quoted"))
-    if checked and not res:
-        res.append((True, "q_questions.md: cross-ticket citations carry source row, condition line and definition", ""))
+    if checked and not any(CROSS_CITE_CHECK in r[1] for r in res):
+        res.append((True, f"q_questions.md: {CROSS_CITE_CHECK}", ""))
+    if same_checked and not any(SAME_QTY_CHECK in r[1] for r in res):
+        res.append((True, f"q_questions.md: {SAME_QTY_CHECK}", ""))
     return res
 
 

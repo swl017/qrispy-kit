@@ -1,0 +1,268 @@
+$ date
+2026-11-07 23:57 KST
+Linux usrg-sw-u20-Desktop 5.15.0-139-generic #149~20.04.1-Ubuntu SMP Wed Apr 16 08:29:56 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+Python 3.8.10
+$ git -C ~/qrispy-kit log --oneline -1   # the S10 (Q-15) change below is uncommitted on top of this
+34d6ea0 RAL ticket 090 S9 (Q-14): the cross-ticket citation check FAILs on unanswered Q items, warns on answered ones
+ M README.md
+ M plugin/lib/qrispy.py
+ M plugin/method/QRISPY_METHOD.md
+ M plugin/skills/ticket/SKILL.md
+ M plugin/skills/ticket/templates/q_questions.md
+ M tests/test_lint_devices.py
+?? tests/runs/linux-2026-11-07-s10.txt
+?? tests/runs/linux-usrg-sw-u20-Desktop-2026-11-05.txt
+$ for f in tests/test_*.py; do python3 -I "$f"; done
+
+===== tests/test_check_response.py
+9/9 PASS
+exit=0
+
+===== tests/test_guard_git.py
+213/213 pass
+D01 | PASS | deny | deny | git checkout -- .
+D02 | PASS | deny | deny | git -C /some/repo checkout -- . 2>/dev/null
+D03 | PASS | deny | deny | cd /tmp/mirror && git restore file.py
+D04 | PASS | deny | deny | ls; git reset --hard HEAD
+D05 | PASS | deny | deny | git clean -fdx
+D06 | PASS | deny | deny | git stash list
+D07 | PASS | deny | deny | bash -c 'git checkout main'
+D08 | PASS | deny | deny | sudo git reset HEAD~1
+D09 | PASS | deny | deny | GIT_DIR=x git stash
+D10 | PASS | deny | deny | echo hi | (cd x && git checkout -b foo)
+D11 | PASS | deny | deny | tmux send-keys -t sim:0 'git checkout -- .' Enter
+D12 | PASS | deny | deny | git -c core.pager=cat --no-pager checkout .
+D13 | PASS | deny | deny | x=$(git stash)
+D14 | PASS | deny | deny | echo `git restore a`
+D15 | PASS | deny | deny | sh -c "cd /r && git clean -n"
+D16 | PASS | deny | deny | timeout 5 git reset
+D17 | PASS | deny | deny | ls # list⏎git checkout x
+D18 | PASS | deny | deny | for f in a b; do git restore $f; done
+D19 | PASS | deny | deny | eval git stash pop
+D21 | PASS | deny | deny | if true; then git checkout x; fi
+D22 | PASS | deny | deny | while read f; do echo $f; done < l; ! git stash
+D20 | PASS | deny | deny | echo 'unbalanced && git checkout -- .
+D23 | PASS | deny | deny | find . -name f -exec git checkout -- {} +
+D24 | PASS | deny | deny | timeout -s KILL 5 git reset --hard
+D25 | PASS | deny | deny | sudo -u usrg git reset --hard
+D26 | PASS | deny | deny | xargs -I {} git checkout {}
+D27 | PASS | deny | deny | git -c alias.co=checkout co -- .
+D28 | PASS | deny | deny | git -c 'alias.zap=!git clean -fdx' zap
+D29 | PASS | deny | deny | git switch --discard-changes main
+D30 | PASS | deny | deny | git switch -f main
+D31 | PASS | deny | deny | git checkout-index -f -a
+D32 | PASS | deny | deny | find . -execdir git stash \;
+D33 | PASS | deny | deny | timeout --signal=KILL 5 git clean -fd
+D34 | PASS | deny | deny | sudo -g wheel -u root git restore f
+D35 | PASS | deny | deny | env -u FOO git checkout x
+D36 | PASS | deny | deny | xargs -n 1 git restore
+D37 | PASS | deny | deny | git switch --force main
+A05 | PASS | ask | ask | timeout -s KILL 5 git commit -m x
+D38 | PASS | deny | deny | bash -lc 'git checkout -- .'
+D39 | PASS | deny | deny | bash -ec 'git reset --hard'
+D40 | PASS | deny | deny | sh -xc 'git stash'
+D41 | PASS | deny | deny | bash -c -- 'git checkout -- .'
+D42 | PASS | deny | deny | echo 'git checkout -- .' | bash
+D43 | PASS | deny | deny | bash <<< 'git checkout -- .'
+D44 | PASS | deny | deny | bash <<'X'⏎git checkout -- .⏎X
+D45 | PASS | deny | deny | sudo -iu usrg git reset --hard
+D46 | PASS | deny | deny | sudo -Eu usrg git reset --hard
+D47 | PASS | deny | deny | stdbuf -oL git checkout -- .
+D48 | PASS | deny | deny | ionice -c3 git reset --hard
+D49 | PASS | deny | deny | su -c 'git reset --hard' usrg
+D50 | PASS | deny | deny | script -qc 'git checkout -- .' /dev/null
+D51 | PASS | deny | deny | printf '%s\n' 'git clean -fdx' | sh
+D52 | PASS | deny | deny | taskset 0x3 git checkout x
+D53 | PASS | deny | deny | flock /tmp/lock git stash
+D54 | PASS | deny | deny | setsid git restore f
+D55 | PASS | deny | deny | bash -o pipefail -c 'git stash'
+D56 | PASS | deny | deny | sudo bash -lc 'git checkout x'
+D57 | PASS | deny | deny | bash --login -c 'git restore f'
+D58 | PASS | deny | deny | sh -s <<< 'git stash'
+D59 | PASS | deny | deny | taskset -c 0,1 git clean -fd
+D60 | PASS | deny | deny | sudo -u usrg bash -c 'cd /r && git reset --hard'
+D61 | PASS | deny | deny | parallel git checkout ::: a b
+D62 | PASS | deny | deny | watch -n 1 git stash
+D63 | PASS | deny | deny | git \⏎  checkout -- .
+D64 | PASS | deny | deny | git -C /x \⏎  reset --hard
+D65 | PASS | deny | deny | git switch \⏎  -f main
+D66 | PASS | deny | deny | out="$(git stash)"
+D67 | PASS | deny | deny | echo "$(git reset --hard)"
+D68 | PASS | deny | deny | echo "`git stash`"
+D69 | PASS | deny | deny | bash <<<'git checkout -- .'
+D70 | PASS | deny | deny | /bin/bash <<'X'⏎git checkout -- .⏎X
+D71 | PASS | deny | deny | printf 'git stash\n' | bash
+D72 | PASS | deny | deny | taskset 1 git reset --hard
+D73 | PASS | deny | deny | taskset 3 git checkout x
+D74 | PASS | deny | deny | tmux send-keys -t s:0 'git switch -f main' Enter
+D75 | PASS | deny | deny | tmux send -t s:0 'git reset --hard' Enter
+D76 | PASS | deny | deny | git checkout-index -af
+D77 | PASS | deny | deny | git checkout-index -fa
+D78 | PASS | deny | deny | git switch --discard main
+D79 | PASS | deny | deny | git -c ALIAS.co=checkout co x
+D80 | PASS | deny | deny | git -c alias.CO=checkout co x
+D81 | PASS | deny | deny | git $'reset' --hard
+D82 | PASS | deny | deny | cat <(git stash)
+D83 | PASS | deny | deny | echo "a $(echo $(git clean -fd))"
+A06 | PASS | ask | ask | bash -lc 'git commit -m x'
+A01 | PASS | ask | ask | git commit -m 'msg'
+A02 | PASS | ask | ask | git push origin main
+A03 | PASS | ask | ask | git -C /tmp/guard_git_test__sz0rv9p/repo_main commit -m x
+A04 | PASS | ask | ask | git add a && git commit -m x
+W01 | PASS | ask | ask | git commit -m 'wip'
+W02 | PASS | allow | allow | git commit -m 'wip'
+W03 | PASS | allow | allow | cd /tmp/guard_git_test__sz0rv9p/repo_linked && git commit -a
+W04 | PASS | allow | allow | git -C /tmp/guard_git_test__sz0rv9p/repo_linked commit -m x
+W05 | PASS | ask | ask | git -C /tmp/guard_git_test__sz0rv9p/repo_linked push origin 
+N01 | PASS | None | None | git status
+N02 | PASS | None | None | git log --oneline -5
+N03 | PASS | None | None | git switch -c wt/084-x
+N04 | PASS | None | None | git worktree add ../wt -b wt/084-x
+N05 | PASS | None | None | grep -n 'git checkout' CLAUDE.md
+N06 | PASS | None | None | echo "never run git reset"
+N07 | PASS | None | None | cat > notes.md <<'EOF'⏎Do not run git checkout -- .⏎git stas
+N08 | PASS | None | None | python3 -c "print('git restore')"
+N09 | PASS | None | None | git diff --stat
+N10 | PASS | None | None | ls checkout reset
+N11 | PASS | None | None | git show HEAD:tickets/COORDINATION.md | head
+N12 | PASS | None | None | rg 'git (checkout|stash)' -n .
+N14 | PASS | None | None | if git diff --quiet; then echo clean; fi
+N13 | PASS | None | None | git log --grep='checkout'
+N15 | PASS | None | None | find . -name '*.pyc' -exec rm {} +
+N16 | PASS | None | None | sudo -u usrg ls
+N17 | PASS | None | None | timeout -s KILL 5 git status
+N18 | PASS | None | None | xargs -I {} echo {}
+N19 | PASS | None | None | git -c core.pager=cat log -1
+N20 | PASS | None | None | git switch main
+N21 | PASS | None | None | git -c alias.st=status st
+N22 | PASS | None | None | find . -exec grep -l 'git checkout' {} +
+N23 | PASS | None | None | bash script.sh
+N24 | PASS | None | None | cat <<EOF > f⏎git checkout x⏎EOF
+N25 | PASS | None | None | python3 - <<'EOF'⏎import os⏎EOF
+N26 | PASS | None | None | bash -lc 'ls -l'
+N27 | PASS | None | None | sudo -iu usrg ls
+N28 | PASS | None | None | ionice -c3 nice ls
+N29 | PASS | None | None | su -c 'ls' usrg
+N30 | PASS | None | None | bash <<< 'echo hi'
+N31 | PASS | None | None | stdbuf -oL ls
+N32 | PASS | None | None | flock /tmp/lock ls
+N33 | PASS | None | None | echo 'git checkout' | cat
+N34 | PASS | None | None | echo hi | bash
+N35 | PASS | None | None | bash -c 'echo git checkout'
+N36 | PASS | None | None | taskset 0x3 ls
+N37 | PASS | None | None | script -qc 'ls' /dev/null
+N38 | PASS | None | None | echo "$(git status)"
+N39 | PASS | None | None | echo '$(git stash)'
+N40 | PASS | None | None | echo "cost is $5 and $(date)"
+N41 | PASS | None | None | tmux send-keys -t s:0 'ls' Enter
+N42 | PASS | None | None | git switch --force-create wt/x
+N43 | PASS | None | None | taskset 1 ls
+N44 | PASS | None | None | git checkout-index -a
+N45 | PASS | ask | ask | git commit -m "tip: $(git rev-parse HEAD)"
+U01 | PASS | None | None | cat script.sh | bash
+U02 | PASS | None | None | bash < script.sh
+U03 | PASS | None | None | source script.sh
+U04 | PASS | None | None | g=git; $g checkout x
+U05 | PASS | None | None | python3 -c "import os; os.system('git checkout x')"
+U06 | PASS | None | None | env -S 'git checkout x'
+U07 | PASS | None | None | ssh host 'git checkout x'
+U08 | PASS | None | None | docker exec c git checkout x
+U09 | PASS | None | None | git config alias.x '!git checkout' && git x
+U10 | PASS | None | None | git read-tree --reset -u HEAD
+U11 | PASS | None | None | git merge wt/084-x
+U12 | PASS | None | None | git rebase main
+U13 | PASS | None | None | curl -s x | sh
+C01 | PASS | None | None | git commit -q -m x
+C02 | PASS | ask | ask | git commit -q -m x
+C03 | PASS | ask | ask | git commit -q -m x
+C04 | PASS | ask | ask | git commit -q -m x
+C05 | PASS | ask | ask | git commit -q -m x
+C06 | PASS | None | None | git commit -q -m x
+C07 | PASS | ask | ask | git commit -q -m x
+C08 | PASS | ask | ask | git commit -q -m x
+C09 | PASS | ask | ask | git commit -q -m x
+C10 | PASS | ask | ask | git commit -q -m x
+C11 | PASS | None | None | git commit -q -m x
+C12 | PASS | ask | ask | git commit --amend -m x
+C13 | PASS | ask | ask | git commit -am x
+C14 | PASS | ask | ask | git commit --all -m x
+C15 | PASS | ask | ask | git push origin main
+C16 | PASS | ask | ask | git add a && git commit -q -m x && git push
+C17 | PASS | ask | ask | git commit -q -m x
+C18 | PASS | ask | ask | git commit -q -m x
+C19 | PASS | None | None | git commit -q -m x
+C20 | PASS | None | None | git commit -q -m "-a fix"
+C21 | PASS | ask | ask | git commit -q -m x
+C22 | PASS | None | None | git commit -q -m x
+C23 | PASS | None | None | git commit -q -m x
+C24 | PASS | ask | ask | git commit -q -m x
+C25 | PASS | ask | ask | git commit -q -m x
+C26 | PASS | None | None | git add a b && git commit -q -m x
+C27 | PASS | None | None | git commit -q -m "tip: $(git rev-parse HEAD)"
+C28 | PASS | None | None | git commit -q -m x -- a b
+C29 | PASS | deny | deny | git checkout -- .
+C30 | PASS | None | None | bash -c 'git commit -q -m x'
+C31 | PASS | None | None | git commit -q -m x
+C32 | PASS | ask | ask | git commit -q -m x
+C33 | PASS | ask | ask | git commit -q -m x
+C34 | PASS | ask | ask | git commit -q -m x
+C35 | PASS | ask | ask | git commit -q -m x
+C36 | PASS | None | None | git commit -q -m x
+C37 | PASS | None | None | git commit -q -m x
+C38 | PASS | None | None | git commit -q -m x
+C39 | PASS | ask | ask | git commit -q -m x
+C40 | PASS | ask | ask | git commit -q -m x
+C41 | PASS | ask | ask | git commit -q -m x
+C42 | PASS | ask | ask | git commit -q -m x
+C43 | PASS | None | None | git commit -q -m x
+C44 | PASS | None | None | git commit -q -m x
+C45 | PASS | None | None | git commit -q -m x
+C46 | PASS | ask | ask | git commit -q -m x
+C47 | PASS | ask | ask | git commit -q -m x
+C48 | PASS | ask | ask | git commit -q -m x
+C49 | PASS | ask | ask | git commit -q -m x
+C50 | PASS | ask | ask | git commit -q -m x
+C51 | PASS | None | None | git commit -q -m x
+C52 | PASS | None | None | git commit -q -m x
+C53 | PASS | None | None | git commit -q -m x
+C54 | PASS | ask | ask | git commit -q -m x
+C55 | PASS | ask | ask | git commit -q -m x
+C56 | PASS | ask | ask | git commit -q -m x
+C57 | PASS | ask | ask | git commit -q -m x
+C58 | PASS | ask | ask | git commit -q -m x
+C59 | PASS | ask | ask | git commit -q -m x
+C60 | PASS | ask | ask | git commit -q -m x
+C61 | PASS | None | None | git commit -q -m x
+exit=0
+
+===== tests/test_help_text.py
+1/1 PASS
+exit=0
+
+===== tests/test_init.py
+2/2 PASS
+exit=0
+
+===== tests/test_install.py
+1/1 PASS
+exit=0
+
+===== tests/test_jobs_portable.py
+9/9 PASS
+exit=0
+
+===== tests/test_lint_devices.py
+12/12 PASS
+exit=0
+
+===== tests/test_lint_evidence.py
+1/1 PASS
+exit=0
+
+===== tests/test_qrispy_config.py
+6/6 PASS
+exit=0
+
+===== tests/test_review_status.py
+6/6 PASS
+exit=0
