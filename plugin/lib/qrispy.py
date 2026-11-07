@@ -751,7 +751,7 @@ def review_registration(t, files):
 # Cross-ticket citation field (RAL lesson L-070, promoted after PAPER1 ticket 003 rev2 B2-2, rev3 B3-1, rev4 B4-1):
 # a Q item that points into another ticket's record must carry, per cited ticket, the source row, that ticket's
 # CITE.md condition line and the exact definition (formula and estimator), before the user answers.
-CROSS_CITE_SINCE = "2026-11-08"  # answered items dated before the device are history; unanswered items are always checked
+CROSS_CITE_SINCE = "2026-11-08"  # answered items dated before the device are history; unanswered items are always checked (and FAIL)
 CROSS_CITE_REF = re.compile(rf"\b({CFG.names_alt(external=True)})(?: ticket)? (\d{{3}})(?:의|가|이|은|는|에서|에)?\s?`([^`\s]+\.[A-Za-z0-9]{{1,5}})`")
 CROSS_CITE_PROCESS = {"ticket.md", "q_questions.md", "state.json", "p_plan.md", "ROADMAP.md", "LESSONS.md", "RECIPES.md",
                       "CLAUDE.md", "AGENTS.md", "METHOD_LOCAL.md"}  # working files that hold no numbers or definitions
@@ -821,7 +821,8 @@ def cross_cite_problems(t, body):
 
 
 def cross_cite(t, files):
-    """WARN per Q item that cites another ticket's record without a complete citation field (RAL lesson L-070)."""
+    """Per Q item that cites another ticket's record without a complete citation field (RAL lesson L-070): FAIL while the
+    item is unanswered (the user must not read it without the field), WARN once answered (RAL ticket 090 Q-14)."""
     if "q_questions.md" not in files:
         return []
     with open(os.path.join(t.path, "q_questions.md"), encoding="utf-8") as f:
@@ -833,7 +834,8 @@ def cross_cite(t, files):
     for head, body in q_items(text):
         d = re.search(r"\d{4}-\d{2}-\d{2}", head)
         date = d.group(0) if d else file_date
-        if Q_ANSWERED.search(body) and date < CROSS_CITE_SINCE:
+        answered = bool(Q_ANSWERED.search(body))
+        if answered and date < CROSS_CITE_SINCE:
             continue
         checked += bool(cross_cited(t, body))
         probs = cross_cite_problems(t, body)
@@ -853,8 +855,8 @@ def cross_cite(t, files):
                 cond = "; it has no CITE.md (ask the user before quoting it)"
             hints.append(f"{ref}: {why}{cond}")
         qid = re.search(r"Q-?\d+", head).group(0)
-        res.append(("warn", f"q_questions.md {qid}: cross-ticket citations carry source row, condition line and definition",
-                    "; ".join(hints) + ". Add the **다른 티켓 인용:** table (q_questions.md template), or a row "
+        res.append(("warn" if answered else False, f"q_questions.md {qid}: cross-ticket citations carry source row, condition line and definition",
+                    ("answered; " if answered else "unanswered, so the user must not read it yet; ") + "; ".join(hints) + ". Add the **다른 티켓 인용:** table (q_questions.md template), or a row "
                                         "'| <ticket file> | 인용 아님: <why> | — |' when nothing is quoted"))
     if checked and not res:
         res.append((True, "q_questions.md: cross-ticket citations carry source row, condition line and definition", ""))

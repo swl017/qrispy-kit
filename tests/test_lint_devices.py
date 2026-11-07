@@ -4,8 +4,8 @@ PAPER1 ticket 003 rev2 A2-4), each on a scratch repository:
 - the line-break check skips HTML comment blocks (a review's QRISPY-REVIEW-PROTOCOL / -META header), but still
   catches a broken sentence right after a comment;
 - a revN_response.md that state.json.reviews does not register as the response of revN.md is a WARN;
-- a Q item that names another ticket's record file without a complete cross-ticket citation row is a WARN,
-  and the warning shows that ticket's CITE.md condition line.
+- a Q item that names another ticket's record file without a complete cross-ticket citation row is a FAIL while
+  unanswered and a WARN once answered (RAL ticket 090 Q-14), and the message shows that ticket's CITE.md condition line.
 Run from the kit: python3 -I tests/test_lint_devices.py"""
 import json
 import os
@@ -44,15 +44,21 @@ def ticket(r, rel, stage="Y", **extra):
     st.update(extra)
     write(os.path.join(r, rel, "state.json"), json.dumps(st))
     write(os.path.join(r, rel, "ticket.md"), f"# {rel} — t\n")
+    for f in ("i_design.md", "p_plan.md"):  # a stage-Y ticket has them; without them lint exits 1 for another reason
+        write(os.path.join(r, rel, f), "# x\n")
     if not os.path.exists(os.path.join(r, rel, "q_questions.md")):
         write(os.path.join(r, rel, "q_questions.md"), "# Q\n\n- 작성: 2026-11-01.\n")
 
 
-def lint(r, tid="DEMO 001"):
+def lint_run(r, tid="DEMO 001"):
     env = dict(os.environ, QRISPY_AGENTS_JSON=os.path.join(r, "agents.json"))
     env.pop("QRISPY_REPO", None)
     p = subprocess.run([QRISPY, "lint", tid], cwd=r, capture_output=True, text=True, env=env)
-    return p.stdout + p.stderr
+    return p.returncode, p.stdout + p.stderr
+
+
+def lint(r, tid="DEMO 001"):
+    return lint_run(r, tid)[1]
 
 
 def rows(out, name):
@@ -151,7 +157,7 @@ def test_citation_without_field_warns_with_condition_line():
     try:
         q_file(r, [item(1, Q38)])
         got = cite_rows(lint(r))
-        assert len(got) == 1 and got[0].startswith("WARN") and "Q-1" in got[0], got
+        assert len(got) == 1 and got[0].startswith("FAIL") and "Q-1" in got[0], got
         assert "DEMO 002 `z_closeout.md`: no cross-ticket citation field" in got[0], got
         assert "결과는 corpus A에 의존한다" in got[0], got  # the condition line to copy is in the warning
         # the same with a complete row: PASS
@@ -175,7 +181,7 @@ def test_incomplete_rows_warn():
         for table, why in cases.items():
             q_file(r, [item(1, Q38 + "\n\n" + FIELD + table)])
             got = cite_rows(lint(r))
-            assert len(got) == 1 and got[0].startswith("WARN") and why in got[0], (table, got)
+            assert len(got) == 1 and got[0].startswith("FAIL") and why in got[0], (table, got)
     finally:
         shutil.rmtree(r)
 
@@ -185,7 +191,7 @@ def test_not_a_citation_row_clears_an_item_that_only_changes_the_file():
     try:
         body = "DEMO 002 `CITE.md` 인용 가능 행 3에 \"점검 중\" 표시를 달까?"
         q_file(r, [item(1, body)])
-        assert cite_rows(lint(r))[0].startswith("WARN")
+        assert cite_rows(lint(r))[0].startswith("FAIL")
         q_file(r, [item(1, body + "\n\n" + FIELD + "| DEMO 002 `CITE.md` | 인용 아님: 그 파일에 표시를 다는 일만 묻는다 | — |\n")])
         got = cite_rows(lint(r))
         assert len(got) == 1 and got[0].startswith("PASS"), got
@@ -206,11 +212,11 @@ def test_detection_scope_and_limits():
         # a Korean particle between the ticket and the file, and the long form "<SYSTEM> ticket NNN", are seen
         q_file(r, [item(1, "DEMO 002의 `z_closeout.md` 3행."), item(2, "DEMO ticket 002 `results/a.csv`.")])
         got = cite_rows(lint(r))
-        assert len(got) == 2 and all(g.startswith("WARN") for g in got), got
+        assert len(got) == 2 and all(g.startswith("FAIL") for g in got), got
         # another system's ticket that is not in this repository's folders: still a citation, no condition hint
         q_file(r, [item(1, "SIDE 007 `CITE.md` 행 2.")])
         got = cite_rows(lint(r))
-        assert len(got) == 1 and got[0].startswith("WARN") and "SIDE 007" in got[0], got
+        assert len(got) == 1 and got[0].startswith("FAIL") and "SIDE 007" in got[0], got
     finally:
         shutil.rmtree(r)
 
@@ -223,12 +229,19 @@ def test_which_items_are_checked():
             item(2, Q38, answer=" \"Q-2 권고\"", date="2026-11-09"),   # answered after: checked
             item(3, Q38, date="2026-10-01"),                          # unanswered: always checked, whatever its date
         ])
-        got = cite_rows(lint(r))
+        code, out = lint_run(r)
+        got = cite_rows(out)
         assert len(got) == 2 and "Q-2" in got[0] and "Q-3" in got[1], got
+        assert got[0].startswith("WARN") and "answered;" in got[0], got   # answered: a warning
+        assert got[1].startswith("FAIL") and "unanswered" in got[1], got  # unanswered: the user must not read it yet
+        assert code == 1, out                                             # a FAIL makes lint exit 1
+        q_file(r, [item(2, Q38, answer=" \"Q-2 권고\"", date="2026-11-09")])
+        code, out = lint_run(r)
+        assert cite_rows(out)[0].startswith("WARN") and code == 0, out    # a warning alone does not
         # an item with no date in its heading takes the file's 작성 date; unanswered, so checked
         q_file(r, ["### Q-1 question\n\n" + Q38 + "\n\n> 사용자 답:\n"])
         got = cite_rows(lint(r))
-        assert len(got) == 1 and got[0].startswith("WARN"), got
+        assert len(got) == 1 and got[0].startswith("FAIL"), got
         # the body of an item ends at the next Q heading: a citation in Q-2 is not Q-1's
         q_file(r, [item(1, "no citation here"), item(2, Q38)])
         got = cite_rows(lint(r))
