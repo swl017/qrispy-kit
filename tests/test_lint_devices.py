@@ -9,6 +9,8 @@ PAPER1 ticket 003 rev2 A2-4), each on a scratch repository:
 RAL ticket 090 S10 (Q-15; RAL lesson L-070 recur 4-5): a citation row that calls its quantity the same as the source's
 ("같은 방식", "같은 양", "same definition", …) must name a reproduction script and its saved output under the citing
 ticket, and the output must have a line starting with PASS; FAIL while unanswered, WARN once answered.
+RAL ticket 090 S11 (Q-16): outside the citation table, a sentence or table cell that names another ticket and makes a
+same-quantity claim is a WARN (never a FAIL); quotes, backticks, mentions, reported speech and place nouns are not claims.
 Run from the kit: python3 -I tests/test_lint_devices.py"""
 import json
 import os
@@ -20,6 +22,7 @@ KIT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 QRISPY = os.path.join(KIT, "plugin", "bin", "qrispy")
 CITE_CHECK = "cross-ticket citations carry source row, condition line and definition"
 SAME_CHECK = "a citation row that calls its quantity the same as the source's names a passing reproduction check"
+OUT_CHECK = "same-quantity claims about another ticket sit in a citation row, not in the item's text"
 
 
 def write(path, text):
@@ -374,6 +377,82 @@ def test_same_quantity_which_items_are_checked():
         ticket(r, "tickets/001-a", stage="closed")
         write(os.path.join(r, "tickets", "001-a", "z_closeout.md"), "# closeout\n\n> 위험도 카드\n")
         assert not same_rows(lint(r)), lint(r)
+    finally:
+        shutil.rmtree(r)
+
+
+# --------------------------------------------------------------------------- outside the citation table (Q-16)
+
+def out_rows(out):
+    return [l for l in out.splitlines() if OUT_CHECK in l]
+
+
+def test_same_quantity_outside_the_table_warns():
+    r = repo()
+    try:
+        warned = {  # item text → the claim the warning names
+            "| 안 | 내용 |\n|---|---|\n| `a` | pixel σ 120 px. DEMO 002 행 3과 같은 설정이다 **(권고)** |": "DEMO 002 행 3과 같은",
+            "**권고:** a. DEMO 002의 수치와 같은 양을 재고, 관문을 비율로 둔다.": "DEMO 002의 수치와 같은",
+            "결정: a. 주 cohort에서 DEMO 002와 같은 정의로 X를 잰다.": "DEMO 002와 같은",
+            "The two arms are configuration-identical to DEMO 002.": "identical to DEMO 002",
+            "0.25 Hz (SIDE 007과 같음)로 돈다.": "SIDE 007과 같음",  # another system, a Korean particle on the number
+        }
+        for text, claim in warned.items():
+            q_file(r, [item(1, text)])
+            code, out = lint_run(r)
+            got = out_rows(out)
+            assert len(got) == 1 and got[0].startswith("WARN") and "Q-1" in got[0] and repr(claim) in got[0], (text, got)
+            assert "Move the claim into a **다른 티켓 인용:** row" in got[0] and code == 0, out  # a warning, even unanswered
+        not_warned = [
+            'Q-1은 설정을 "DEMO 002 행 3과 같은 설정"이라는 전제로 물었다. 그 전제가 틀렸다.',     # a quoted earlier claim
+            '리뷰는 이렇게 적었다: "첫 문장이다. DEMO 002와 같은 양을 잰다." 그 말은 틀렸다.',     # a quote that opened a sentence earlier
+            "넓힌 패턴 (`DEMO 002와 같은 양`, `IT-25`) 아래의 줄을 다시 본다.",                    # backticks: a literal
+            "DEMO 002 `CITE.md` 행 7개 가운데 같은 양이라고 적은 행은 0개다.",                       # a mention of the words
+            "L-070에서 같은 양 주장이 틀렸던 자리 (DEMO 002 Q-36).",                                  # a mention ("주장")
+            "설정 (A)가 DEMO 002의 설정과 같다고 기록되었지만, 근거 행은 다른 조건이다.",           # reported speech
+            "그 위의 이유는 DEMO 002와 같은 조건이라는 전제 위에 있었다.",                           # quotative after the noun
+            "지금 고친다. DEMO 003의 변경과 같은 파일에서 섞인다.",                                   # a place, not a quantity
+            "DEMO 002의 cohort를 본다. 주 cohort bag에서도 같은 계산을 돌린다.",                     # limit: ticket in another sentence
+            "DEMO 001과 같은 설정을 다시 쓴다.",                                                       # the ticket itself
+            "DEMO 002와 같은 양이 아니다 (원점이 다름).",                                              # a denial
+            "필터와 STT가 같은 정의를 쓴다 (006의 가정과 같다).",                                      # limit: a bare number is not a ticket
+            "```\nDEMO 002와 같은 양\n```",                                                          # a code fence
+        ]
+        for text in not_warned:
+            q_file(r, [item(1, text)])
+            assert not out_rows(lint(r)), (text, lint(r))
+        # the user's own words (> lines) are not checked
+        q_file(r, [item(1, "a 또는 b.", answer=" DEMO 002와 같은 방식으로 해", date="2026-11-09")])
+        assert not out_rows(lint(r)), lint(r)
+        # a claim inside the citation table is the S10 rule's (FAIL before the answer), not this warning
+        q_file(r, [item(1, same_row(SAME_DEF))])
+        out = lint(r)
+        assert same_rows(out)[0].startswith("FAIL") and not out_rows(out), out
+        # one warning per item, naming each claim; text after the table (the recommendation) is read too
+        q_file(r, [item(1, "DEMO 002와 같은 설정이다.\n\n" + FIELD4 + f"| DEMO 002 `z_closeout.md` | {COND} | 중앙값 ÷ 1.1774 | — |\n\n"
+                        "또 SIDE 004와 같은 seed를 쓴다.")])
+        got = out_rows(lint(r))
+        assert len(got) == 1 and "'DEMO 002와 같은'" in got[0] and "'SIDE 004와 같은'" in got[0], got
+    finally:
+        shutil.rmtree(r)
+
+
+def test_same_quantity_outside_which_items_are_checked():
+    r = repo()
+    try:
+        text = "**권고:** a. DEMO 002의 수치와 같은 양을 잰다."
+        q_file(r, [
+            item(1, text, answer=" \"Q-1 권고\"", date="2026-11-07"),   # answered before the cut: history
+            item(2, text, answer=" \"Q-2 권고\"", date="2026-11-09"),   # answered after: checked
+            item(3, text, date="2026-10-01"),                            # unanswered: checked, whatever its date
+        ])
+        code, out = lint_run(r)
+        got = out_rows(out)
+        assert len(got) == 2 and "Q-2" in got[0] and "Q-3" in got[1] and all(g.startswith("WARN") for g in got), got
+        assert code == 0, out  # never a FAIL
+        ticket(r, "tickets/001-a", stage="closed")
+        write(os.path.join(r, "tickets", "001-a", "z_closeout.md"), "# closeout\n\n> 위험도 카드\n")
+        assert not out_rows(lint(r)), lint(r)
     finally:
         shutil.rmtree(r)
 

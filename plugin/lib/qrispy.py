@@ -772,6 +772,15 @@ REPRO_SCRIPT_EXT = (".py", ".sh", ".bash", ".r", ".jl", ".m", ".js", ".ts", ".ip
 REPRO_PATH = re.compile(r"`([^`\s]+\.[A-Za-z0-9]{1,6})`")
 CROSS_CITE_CHECK = "cross-ticket citations carry source row, condition line and definition"
 SAME_QTY_CHECK = "a citation row that calls its quantity the same as the source's names a passing reproduction check"
+# Outside the citation table (RAL ticket 090 Q-16): a sentence or table cell that names another ticket and makes a
+# same-quantity claim is a WARN, so the claim moves into a citation row with a reproduction check or loses the word.
+SAME_QTY_OUT_CHECK = "same-quantity claims about another ticket sit in a citation row, not in the item's text"
+TICKET_REF = re.compile(rf"\b({CFG.names_alt(external=True)})(?: ticket)? (\d{{3}})(?!\d)")
+PARTICLE = r"(?:에서|에|은|는|이|가|을|를|과|와|의|로|으로|도|만)?(?![가-힣])"  # a noun, then at most one particle
+SAME_QTY_MENTION = re.compile(r"^\s?[^\s|]{0,6}?(?:이)?라(?:고|는|며|면)|^\s?(?:주장|표현|낱말|문구|말)" + PARTICLE
+                              + r"|^(?:고|는)(?=\s|$)")  # "같은 양이라고 적은", "같은 조건이라는 전제", "같은 양 주장이", "같다고 기록되었다"
+SAME_QTY_PLACE = re.compile(r"^\s?(?:파일|폴더|저장소|세션|질문|문서|커밋|브랜치|티켓)" + PARTICLE)  # the same file, session …: not a quantity
+QUOTES = {'"': '"', "“": "”", "「": "」", "『": "』", "`": "`"}  # backticks: a literal, not a claim
 Q_HEAD = re.compile(r"^#{2,4} Q-?\d+\b.*$", re.M)
 Q_ANSWERED = re.compile(r"^(?:>\s*(?:사용자|user)[^:\n]*:[ \t]*\S|결정:|Decision:)", re.M | re.I)
 
@@ -901,6 +910,84 @@ def same_qty_problems(t, body):
     return n, out
 
 
+def quoted_spans(text):
+    """Character spans inside double quotes (" … ", “ … ”, 「 … 」, 『 … 』) of one line."""
+    spans, k = [], 0
+    while k < len(text):
+        close = QUOTES.get(text[k])
+        if close:
+            e = text.find(close, k + 1)
+            if e < 0:
+                break
+            spans.append((k, e))
+            k = e + 1
+        else:
+            k += 1
+    return spans
+
+
+def same_qty_uses(text, quotes=None):
+    """Same-quantity phrases of one sentence that are used as claims: not denied, not inside quotes or backticks (a
+    quoted earlier claim; `quotes` are the spans of the whole line, since a quote may open in an earlier sentence),
+    not a mention ("같은 양이라고 적은", "같은 양 주장", "같다고 기록되었다"), not about a place or record ("같은 파일")."""
+    quotes = quoted_spans(text) if quotes is None else quotes
+    out = []
+    for m in SAME_QTY.finditer(text):
+        after = text[m.end():]
+        if SAME_QTY_NOT_AFTER.match(after) or SAME_QTY_NOT_BEFORE.search(text[:m.start()]):
+            continue
+        if any(a < m.start() < b for a, b in quotes) or SAME_QTY_MENTION.match(after) or SAME_QTY_PLACE.match(after):
+            continue
+        out.append(m.group(0))
+    return out
+
+
+def sentences(line):
+    """(sentence or table cell, its quoted spans) for one line; the spans come from the whole line, shifted."""
+    quotes, out, k = quoted_spans(line), [], 0
+    for sep in list(re.finditer(r"\s*\|\s*|(?<=[.!?])\s+", line)) + [None]:
+        e = sep.start() if sep else len(line)
+        out.append((line[k:e], [(a - k, b - k) for a, b in quotes if b > k and a < e]))
+        k = sep.end() if sep else e
+    return out
+
+
+def outside_field_lines(body):
+    """Lines of a Q item that are not the citation field (its line and its table), not the user's words (> lines),
+    and not inside a code fence."""
+    lines, out, k, fence = body.split("\n"), [], 0, False
+    while k < len(lines):
+        line = lines[k]
+        if line.lstrip().startswith("```"):
+            fence = not fence
+        elif not fence and CROSS_CITE_FIELD.match(line):
+            if not re.match(r"[ \t]*(?:없음|none)\b", line[CROSS_CITE_FIELD.match(line).end():], re.I):
+                j, seen = k + 1, False
+                while j < len(lines) and (lines[j].strip().startswith("|") or (not lines[j].strip() and not seen)):
+                    seen = seen or lines[j].strip().startswith("|")
+                    j += 1
+                k = j
+                continue
+        elif not fence and not line.lstrip().startswith(">"):
+            out.append(line)
+        k += 1
+    return out
+
+
+def same_qty_outside(t, body):
+    """[(claim, sentence)] for sentences or table cells outside the citation field that name another ticket
+    (`<SYSTEM> NNN`) and make a same-quantity claim (RAL ticket 090 Q-16)."""
+    out = []
+    for line in outside_field_lines(body):
+        for seg, quotes in sentences(line):
+            if not any(f"{m.group(1)} {m.group(2)}" != t.id for m in TICKET_REF.finditer(seg)):
+                continue
+            uses = same_qty_uses(seg, quotes)
+            if uses:
+                out.append((uses[0], seg.strip()))
+    return out
+
+
 def cross_cite(t, files):
     """Per Q item that cites another ticket's record without a complete citation field (RAL lesson L-070): FAIL while the
     item is unanswered (the user must not read it without the field), WARN once answered (RAL ticket 090 Q-14)."""
@@ -929,6 +1016,12 @@ def cross_cite(t, files):
                         + ". Name the script and its saved output (under this ticket, e.g. `evidence/<name>.py` and "
                           "`evidence/<name>.out.txt`) in the row's 재현 판정 cell; the script recomputes the source's value from "
                           "the source's data with the stated definition and prints PASS. Without one, do not call it the same quantity"))
+        out = same_qty_outside(t, body)
+        if out:
+            res.append(("warn", f"q_questions.md {qid}: {SAME_QTY_OUT_CHECK}",
+                        "; ".join(f"{claim!r} in {short(seg, 90)!r}" for claim, seg in out[:4]) + (" …" if len(out) > 4 else "")
+                        + ". Move the claim into a **다른 티켓 인용:** row with a reproduction check (재현 판정 cell: the script "
+                          "and its saved output under this ticket), or drop the word 같은/same if the quantity was not reproduced"))
         probs = cross_cite_problems(t, body)
         if not probs:
             continue
