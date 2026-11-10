@@ -42,7 +42,7 @@ ROADMAP_STATUSES = ("planned", "active", "done", "parked", "dropped")
 _ROADMAPS = {}
 # Parent and child tickets (RAL ticket 087 Q-4): only the child names its parent, as "<SYSTEM> NNN"
 PARENT_RE = re.compile(rf"^({SYSTEMS}) (\d{{3}})$")
-LEGACY_PARENT_RE = re.compile(rf"^(?:({CFG.roots_alt()})/)?(\d{{3}})-[\w.-]+/?$")
+LEGACY_PARENT_RE = re.compile(rf"^(?:({CFG.roots_alt()})/)?(?:[A-Z][A-Z0-9]*-)?(\d{{3}})-[\w.-]+/?$")
 LEGACY_ROOTS = CFG.system_of_root
 TITLE_PREFIX_RE = re.compile(rf"^(?:(?:{CFG.names_alt(external=True)})\s*)?(?:ticket\s*)?\d+\s*[—:-]\s*", re.I)
 _AGENTS = []
@@ -91,7 +91,7 @@ class Ticket:
     def __init__(self, system, path):
         self.system, self.path = system, path
         self.slug = os.path.basename(path)
-        self.num = self.slug.split("-", 1)[0]
+        self.num = qrispy_config.ticket_num(self.slug)
         self.id = f"{system} {self.num}"
         self.state, self.state_error = {}, None
         sp = os.path.join(path, "state.json")
@@ -138,7 +138,7 @@ class Ticket:
     @property
     def parent(self):
         """state.json.parent as "<SYSTEM> NNN" (RAL ticket 087 Q-4); None when absent or empty. The pre-v2 forms, a slug
-        ("045-some-slug", in the primary system) or a path ("side/tickets/011-…", in another), are read as the same ticket."""
+        ("045-some-slug" or "RAL-045-some-slug", in the primary system) or a path ("side/tickets/011-…", in another), are read as the same ticket."""
         p = self.state.get("parent")
         if not (isinstance(p, str) and p.strip()):
             return None
@@ -389,9 +389,7 @@ def load(systems=None):
     for system, root in ROOTS:
         if systems and system not in systems:
             continue
-        for d in sorted(glob.glob(os.path.join(root, "[0-9][0-9][0-9]-*"))):
-            if os.path.isdir(d):
-                out.append(Ticket(system, d))
+        out.extend(Ticket(system, d) for d in qrispy_config.ticket_dirs(root))
     return out
 
 
@@ -1241,14 +1239,25 @@ def lint_repo():
                 ok, detail = False, f"YAML error: {str(e).splitlines()[0][:80]}"
         res.append((ok, f"skill {name}: frontmatter parses and has a description", detail))
     for system, root in ROOTS:  # two sessions opening tickets at once can pick the same number (RAL ticket 084 Q-31)
-        nums = {}
-        for d in glob.glob(os.path.join(str(root), "[0-9][0-9][0-9]-*")):
-            if os.path.isdir(d):
-                nums.setdefault(os.path.basename(d)[:3], []).append(os.path.basename(d))
+        nums, bare, wrong = {}, [], []
+        for d in map(os.path.basename, qrispy_config.ticket_dirs(str(root))):
+            nums.setdefault(qrispy_config.ticket_num(d), []).append(d)
+            pre = qrispy_config.ticket_prefix(d)
+            if pre is None:
+                bare.append(d)
+            elif pre != system:
+                wrong.append(d)
         known = KNOWN_DUP_NUMBERS.get(system, set())
         dup = {n: v for n, v in nums.items() if len(v) > 1 and n not in known}
         detail = "; ".join(", ".join(sorted(v)) for v in dup.values()) or (f"known historic duplicates: {', '.join(sorted(known))}" if known else "")
         res.append(("warn" if dup else True, f"{system} ticket numbers are unique", detail))
+        # a folder carries its system's prefix, <SYSTEM>-NNN-<slug>; the older NNN-<slug> is read but warned on
+        named = []
+        if wrong:
+            named.append(f"wrong prefix: {', '.join(wrong[:5])}")
+        if bare:
+            named.append(f"no prefix ({len(bare)}): {', '.join(bare[:5])}{' …' if len(bare) > 5 else ''}; rename with `git mv <old> {system}-<old>`")
+        res.append((False if wrong else "warn" if bare else True, f"{system} ticket folders are named {system}-NNN-<slug>", "; ".join(named)))
     res.extend(kit_rows())
     byid = None
     for system, _ in ROOTS:  # project roadmap ledgers (RAL ticket 086)

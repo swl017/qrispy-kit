@@ -14,7 +14,7 @@ Your prompt gives two parameters, `TICKET` and `ROUND`. Ignore anything else in 
 Read `${CLAUDE_PLUGIN_ROOT}/method/REVIEW_PROMPT.md` in full now and follow it exactly. It is the whole contract: what to read, what you may and may not do, the two machine-read blocks your output must start with, and the grading rules. The round parameters it refers to are:
 
 - `TICKET`: the value given
-- `TICKET_DIR`: the output of `qrispy config ticket-dir <TICKET>` (the repository's ticket systems are in `qrispy.json`; a ticket of the first system is passed by its slug, one of another system by its path `<root>/NNN-slug`)
+- `TICKET_DIR`: the output of `qrispy config ticket-dir <TICKET>` (the repository's ticket systems are in `qrispy.json`; a ticket of the first system is passed by its slug, one of another system by its path `<root>/SYSTEM-NNN-slug`)
 - `ROUND`: the value given
 - `REVIEW_FILE`: `<TICKET_DIR>/rev<ROUND>.md`
 - `SCRATCH_DIR`: `<the output of qrispy config review-scratch>/<TICKET>/rev<ROUND>`

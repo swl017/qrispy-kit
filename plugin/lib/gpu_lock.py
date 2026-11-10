@@ -140,7 +140,7 @@ def user_away():
 
 
 def from_job(job):
-    """(ticket, session) of a run_job.sh job dir <...>/<NNN-slug>/jobs/<id>: the ticket's system from its tickets
+    """(ticket, session) of a run_job.sh job dir <...>/<SYSTEM-NNN-slug>/jobs/<id>: the ticket's system from its tickets
     folder, the session from its state.json (else $AGENT_SESSION, else "unknown")."""
     tdir = os.path.dirname(os.path.dirname(os.path.abspath(job)))
     root, slug = os.path.dirname(tdir), os.path.basename(tdir)
@@ -159,7 +159,7 @@ def from_job(job):
             session = json.load(f).get("session")
     except (OSError, ValueError):
         pass
-    return f"{system} {slug[:3]}", session or os.environ.get("AGENT_SESSION") or "unknown"
+    return f"{system} {qrispy_config.ticket_num(slug) or slug[:3]}", session or os.environ.get("AGENT_SESSION") or "unknown"
 
 
 def line(d):

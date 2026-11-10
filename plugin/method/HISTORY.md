@@ -7,6 +7,7 @@ The kit's method files (`QRISPY_METHOD.md`, `DEV_REVIEW_RECIPE.md`, `REVIEW_PROM
 | Section | Rule or passage (as it now stands, shortened) | Origin |
 |---|---|---|
 | QRISPY Ticket Method | heading v2 changes | RAL ticket 084 (QRISPY v2, 2026-10-14) |
+| QRISPY Ticket Method | ticket directories `<ticket root>/<SYSTEM>-<NNN>-<ticket-slug>/`; the older `<NNN>-<ticket-slug>/` still read, warned on by `qrispy lint --repo` | kit change of 2026-11-10 (the user's request in the Simulation repository, system SIM; no ticket) |
 | File Registry | row `jobs/<id>/` | RAL ticket 087 (GPU and scoped-go fields of `job.json`) |
 | File Registry | row `jobs/<id>/` | RAL ticket 087 (`jobs/worker/status.log`) |
 | File Registry | row `evidence/` | RAL ticket 084 rev2 R2-A4 |

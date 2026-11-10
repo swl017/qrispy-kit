@@ -7,8 +7,10 @@ results, and closeout evidence in one ticket directory.
 Ticket directories live under:
 
 ```text
-<ticket root>/<NNN-ticket-slug>/
+<ticket root>/<SYSTEM>-<NNN>-<ticket-slug>/
 ```
+
+for example `tickets/DEMO-001-wind-model/`: the system name from `qrispy.json`, the ticket's three-digit number in that system, and a short slug. Folders named in the older form `<NNN>-<ticket-slug>/` are still read; `qrispy lint --repo` warns on them, and they are renamed with `git mv`.
 
 Each repository names its ticket systems and their folders (ticket roots) in `qrispy.json` at the repository root. Rules that hold only in one repository (its domain, machines, tools and projects) live in `<ticket root>/METHOD_LOCAL.md` of its primary ticket root; that file may narrow the rules here but not loosen them. The tickets that the rules here came from are listed in `method/HISTORY.md`.
 
@@ -332,7 +334,7 @@ system. Other repositories keep their own numbered tickets, and the numbers coll
   stack's ticket must prefix it too (`<SYSTEM> ticket NNN`), never bare.
 - In durable documents (deliverables, closeouts, CONTEXT.md), give the full
   slug or path on first reference, e.g.
-  `<SYSTEM> ticket NNN-<slug>`.
+  `<SYSTEM> ticket <SYSTEM>-NNN-<slug>`.
 
 ## Ticket Revisit
 
@@ -392,7 +394,7 @@ Use `state.json` with at least:
 
 ```json
 {
-  "ticket_slug": "NNN-ticket-slug",
+  "ticket_slug": "SYSTEM-NNN-ticket-slug",
   "current_stage": "closed",
   "last_approved_stage": "Q",
   "next_action": "Open the next ticket for ...",

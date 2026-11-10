@@ -9,9 +9,11 @@ round, and the *.md files directly in its folder are the shared method documents
 stops the tool with the reason; there is no silent default (a repository that forgot the file must not run as RAL).
 
 CLI for shell scripts:
-    qrispy_config.py ticket-dir <NNN-slug | <root>/NNN-slug>   the ticket folder relative to the repository
+    qrispy_config.py ticket-dir <SYSTEM-NNN-slug | <root>/SYSTEM-NNN-slug>   the ticket folder relative to the repository
     qrispy_config.py primary-root | review-scratch | external-roots | repo
-Library: find_repo() -> path; load(repo) -> Config; claude_project_dir(repo).
+Library: find_repo() -> path; load(repo) -> Config; claude_project_dir(repo); ticket_num(name), ticket_dirs(root).
+
+A ticket folder is named <SYSTEM>-NNN-<slug> (DEMO-001-wind-model); the older NNN-<slug> is still read.
 """
 import json
 import os
@@ -19,13 +21,31 @@ import re
 import sys
 
 NAME_RE = re.compile(r"^[A-Z][A-Z0-9]*$")
-SLUG_RE = re.compile(r"^\d{3}-[A-Za-z0-9._-]+$")
+TICKET_DIR_RE = re.compile(r"^(?:([A-Z][A-Z0-9]*)-)?(\d{3})-[A-Za-z0-9._-]+$")  # <SYSTEM>-NNN-<slug>, or the older NNN-<slug>
 LIB = os.path.dirname(os.path.abspath(__file__))  # the kit's tools
 PLUGIN = os.path.dirname(LIB)                      # the plugin folder (skills/, agents/, hooks/, bin/)
 
 
 class ConfigError(Exception):
     pass
+
+
+def ticket_num(name):
+    """'DEMO-001-slug' or the older '001-slug' -> '001'; None when `name` is not a ticket folder name."""
+    m = TICKET_DIR_RE.match(name)
+    return m.group(2) if m else None
+
+
+def ticket_prefix(name):
+    """The system prefix of a ticket folder name ('DEMO' of 'DEMO-001-slug'); None for the older 'NNN-slug' form."""
+    m = TICKET_DIR_RE.match(name)
+    return m.group(1) if m else None
+
+
+def ticket_dirs(root):
+    """The ticket folders directly in `root` (absolute paths), ordered by number, then name."""
+    names = [d for d in (os.listdir(root) if os.path.isdir(root) else []) if ticket_num(d) and os.path.isdir(os.path.join(root, d))]
+    return [os.path.join(root, d) for d in sorted(names, key=lambda d: (ticket_num(d), d))]
 
 
 def find_repo(start=None):
@@ -81,13 +101,13 @@ class Config:
         return None
 
     def ticket_dir(self, ref):
-        """A primary-system slug or '<root>/<NNN-slug>' -> the ticket folder relative to the repository."""
-        if SLUG_RE.match(ref):
+        """A primary-system slug or '<root>/<SYSTEM-NNN-slug>' -> the ticket folder relative to the repository."""
+        if TICKET_DIR_RE.match(ref):
             return f"{self.primary_root}/{ref}"
         root, _, slug = ref.rstrip("/").rpartition("/")
-        if root in self.system_of_root and root != self.primary_root and SLUG_RE.match(slug):  # a primary ticket goes by its slug only
+        if root in self.system_of_root and root != self.primary_root and TICKET_DIR_RE.match(slug):  # a primary ticket goes by its slug only
             return f"{root}/{slug}"
-        raise ConfigError(f"not a ticket slug of {self.primary} or a path <root>/NNN-slug with a root in qrispy.json: {ref}")
+        raise ConfigError(f"not a ticket slug of {self.primary} or a path <root>/SYSTEM-NNN-slug with a root in qrispy.json: {ref}")
 
 
 def load(repo=None):

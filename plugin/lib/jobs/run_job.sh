@@ -17,7 +17,7 @@
 # Detaching means the launch command returns at once, so the harness cannot see the end.
 # In the SAME turn, start  qrispy job wait <job_dir>  as a background command:
 # it exits when DONE.json appears (or the job dies), which is what wakes the session.
-# Put the job dir under the ticket — tickets/<NNN-slug>/jobs/<id>/ — so `qrispy inbox` sees it.
+# Put the job dir under the ticket — tickets/<SYSTEM-NNN-slug>/jobs/<id>/ — so `qrispy inbox` sees it.
 #
 # --gpu <kind> (RAL ticket 087 S2): take the machine's GPU lock (`qrispy lock`, lib/gpu_lock.py) before starting, as the
 # job dir's ticket and that ticket's state.json session. If another owner holds it, nothing starts (exit 3): ask the user.

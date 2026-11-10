@@ -56,8 +56,8 @@ def ticket_dir(ticket, root=REPO):
     name_of(ticket)  # an unknown system stops here with the usage line, not a KeyError (RAL ticket 089)
     system, num = ticket.split()
     base = os.path.join(root, ROOTS[system])
-    hits = [d for d in os.listdir(base) if d.startswith(num + "-")] if os.path.isdir(base) else []
-    return os.path.join(ROOTS[system], hits[0]) if len(hits) == 1 else f"{ROOTS[system]}/{num}-<slug>"
+    hits = [os.path.basename(d) for d in qrispy_config.ticket_dirs(base) if qrispy_config.ticket_num(os.path.basename(d)) == num]
+    return os.path.join(ROOTS[system], hits[0]) if len(hits) == 1 else f"{ROOTS[system]}/{system}-{num}-<slug>"
 
 
 def short(s, n=160):
@@ -133,7 +133,7 @@ def cmd_claude_bg(a):
 
 def cmd_headless(a):
     p = read_prompt(a.prompt_file)
-    m = re.search(rf"({CFG.roots_alt()})/(\d{{3}})-[^/]+/jobs/([^/]+)/?$", os.path.abspath(a.job))
+    m = re.search(rf"({CFG.roots_alt()})/(?:[A-Z][A-Z0-9]*-)?(\d{{3}})-[^/]+/jobs/([^/]+)/?$", os.path.abspath(a.job))
     sysname = CFG.system_of_root[m.group(1)].lower() if m else "job"
     hname = f"{sysname}-{m.group(2)}-{m.group(3)}" if m else os.path.basename(a.job)
     # no --permission-mode: a worker runs in the user's normal mode, like an interactive session (RAL ticket 087 S3 live test;
@@ -317,7 +317,7 @@ def worker_ticket_dir(name, root):
     if not m:
         return None
     base = os.path.join(root, ROOTS[m.group(1).upper()])
-    dirs = [os.path.join(base, d) for d in (os.listdir(base) if os.path.isdir(base) else []) if d.startswith(m.group(2) + "-")]
+    dirs = [d for d in qrispy_config.ticket_dirs(base) if qrispy_config.ticket_num(os.path.basename(d)) == m.group(2)]
     return dirs[0] if len(dirs) == 1 else None
 
 

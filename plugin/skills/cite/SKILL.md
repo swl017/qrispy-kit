@@ -10,7 +10,7 @@ argument-hint: <ticket id>
 Never quote a ticket's number or conclusion from memory, from an auto-memory note, or from a slice note. Quote only what its citation boundary allows, and cite the source file with it. Check:
 
 1. **The ticket's `CITE.md`** — `qrispy cite <id>` prints it. It is the only source of citation boundaries. Quote only rows in "인용 가능", with their source path; never anything in "인용 금지"; ask the user about "출처 미확인" rows. If it prints a ⚠ line (the ticket moved after the boundary was judged), do not quote: tell the user the boundary needs re-judging.
-   For a ticket of an external system (`external_systems` in `qrispy.json`), read `<its root>/<NNN-slug>/CITE.md` directly; `qrispy` does not index those systems.
+   For a ticket of an external system (`external_systems` in `qrispy.json`), read `<its root>/<SYSTEM-NNN-slug>/CITE.md` (or the older `<NNN-slug>/`) directly; `qrispy` does not index those systems.
 2. **No `CITE.md`** — `qrispy cite` lists the files to read (closeout, latest review response). Read the claim-safe conclusion there, quote only that, and tell the user the ticket has no citation boundary yet.
 
 A citation record that a repository has retired (named in `<ticket root>/METHOD_LOCAL.md`) is history, never the current boundary.

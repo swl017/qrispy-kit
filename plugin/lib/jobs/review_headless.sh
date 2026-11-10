@@ -3,14 +3,14 @@
 # (RAL ticket 084, Q-36 and Q-38). It does the mechanical steps of the qrispy:review skill and
 # nothing that needs judgment: it never writes a response, a lesson or state.json.
 #
-#   review_headless.sh start  <NNN-slug> <round> [--dry-run]
+#   review_headless.sh start  <SYSTEM-NNN-slug> <round> [--dry-run]
 #       freeze the hashes the reviewer must not change, write the prompt and run script, launch the
 #       reviewer as a tracked job (`qrispy job run`). --dry-run prints and changes nothing.
-#   review_headless.sh finish <NNN-slug> <round>
+#   review_headless.sh finish <SYSTEM-NNN-slug> <round>
 #       after the job ended: pull the review text out of the stream, check it (husk, attestation hashes,
 #       guard diff), save it verbatim as tickets/<slug>/rev<round>.md, keep the run as evidence.
-#   review_headless.sh freeze <NNN-slug> <round>
-#   review_headless.sh record <NNN-slug> <round> <text_file>
+#   review_headless.sh freeze <SYSTEM-NNN-slug> <round>
+#   review_headless.sh record <SYSTEM-NNN-slug> <round> <text_file>
 #       the subagent route (PAPER1 ticket 001, 2026-10-18): freeze the same hashes before calling the
 #       qrispy:reviewer agent (plugin/agents/reviewer.md, Opus, effort high) through the Agent tool;
 #       after it returns, run record with either its final message saved unchanged or the Agent tool's output
@@ -28,7 +28,7 @@
 set -euo pipefail
 die() { echo "review_headless: $1" >&2; exit "${2:-1}"; }
 mode="${1:-}"; slug="${2:-}"; round="${3:-}"; flag="${4:-}"
-[ -n "$mode" ] && [ -n "$slug" ] && [ -n "$round" ] || die "usage: qrispy review freeze|record|start|finish <NNN-slug | <root>/NNN-slug> <round> [<text_file> (record) | --dry-run (start)]"
+[ -n "$mode" ] && [ -n "$slug" ] && [ -n "$round" ] || die "usage: qrispy review freeze|record|start|finish <SYSTEM-NNN-slug | <root>/SYSTEM-NNN-slug> <round> [<text_file> (record) | --dry-run (start)]"
 LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # the kit's tools; the repository is found from the working folder (RAL ticket 090)
 conf() { python3 -B "$LIB/qrispy_config.py" "$@"; }
 REPO=$(conf repo 2>&1) || die "${REPO#qrispy_config: }"

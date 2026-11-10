@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for qrispy_config.py and the tools that read qrispy.json (RAL ticket 089 T-3–T-7, RAL ticket 090 T-1).
+"""Tests for qrispy_config.py and the tools that read qrispy.json (RAL ticket 089 T-3–T-7, RAL ticket 090 T-1; T-8 the folder names).
 Run from the kit: python3 -I tests/test_qrispy_config.py
 
 The tools live in the kit and find the repository from the working folder (RAL ticket 090). T-3 builds a scratch repository
@@ -197,6 +197,50 @@ def test_t7_auto_memory_line_names_its_path_and_passes_when_none_yet():
     finally:
         shutil.rmtree(r)
         shutil.rmtree(home)
+
+
+def test_t8_folders_named_system_nnn_slug():
+    """Ticket folders are named <SYSTEM>-NNN-<slug>; the older NNN-<slug> is still read, and lint warns on it."""
+    assert qc.ticket_num("DEMO-001-alpha") == "001" and qc.ticket_prefix("DEMO-001-alpha") == "DEMO"
+    assert qc.ticket_num("001-alpha") == "001" and qc.ticket_prefix("001-alpha") is None
+    assert qc.ticket_num("DEMO-alpha") is None and qc.ticket_num("LESSONS.md") is None and qc.ticket_num("DEMO-01-x") is None
+    r = os.path.realpath(tempfile.mkdtemp(prefix="qrispy_config_t8_"))
+    try:
+        write(os.path.join(r, "qrispy.json"), json.dumps(DEMO))
+        ticket(r, "work/tickets", "DEMO-001-alpha", "DEMO 001 — alpha", {})
+        ticket(r, "work/tickets", "002-beta", "DEMO 002 — beta", {"parent": "DEMO-001-alpha"})  # the pre-v2 slug form of a parent
+        ticket(r, "work/tickets", "DEMO-010-kappa", "DEMO 010 — kappa", {})
+        ticket(r, "side/tickets", "SIDE-001-gamma", "SIDE 001 — gamma", {})
+        write(os.path.join(r, "agents.json"), "[]")
+        rc, out = run(r, QRISPY, "ls", "--all")
+        assert rc == 0 and all(i in out for i in ("DEMO 001", "DEMO 002", "DEMO 010", "SIDE 001")), out
+        assert out.index("DEMO 002") < out.index("DEMO 010"), out  # by number, whatever the folder's form
+        for key in ("DEMO 001", "DEMO-001", "alpha"):
+            rc, out = run(r, QRISPY, "show", key)
+            assert rc == 0 and out.startswith("DEMO 001 — alpha\n"), (key, out)
+        rc, out = run(r, QRISPY, "show", "DEMO 002")
+        assert rc == 0 and "DEMO 001" in out, out  # parent resolved from its slug
+        rc, out = run(r, QRISPY, "lint", "--repo")
+        assert "WARN  DEMO ticket folders are named DEMO-NNN-<slug>  (no prefix (1): 002-beta;" in out, out
+        assert "PASS  SIDE ticket folders are named SIDE-NNN-<slug>" in out, out
+        assert "(DEMO 002: write parent as 'DEMO 001', not the older form 'DEMO-001-alpha')" in out, out  # read, and found
+        rc, out = run(r, QRISPY, "review", "start", "DEMO-001-alpha", "1", "--dry-run")
+        assert rc == 0 and "ticket work/tickets/DEMO-001-alpha" in out, out
+        rc, out = run(r, QRISPY, "review", "start", "side/tickets/SIDE-001-gamma", "1", "--dry-run")
+        assert rc == 0 and "ticket side/tickets/SIDE-001-gamma" in out, out
+        rc, out = run(r, QRISPY, "worker", "prompt", "--ticket", "SIDE 001", "--parent", "DEMO 001",
+                      "--parent-session", "s0", "--agent", "claude", "--task", "t")
+        assert rc == 0 and "side/tickets/SIDE-001-gamma" in out, out
+        os.environ.pop("QRISPY_REPO", None)
+        import gpu_lock
+        assert gpu_lock.from_job(os.path.join(r, "work/tickets/DEMO-010-kappa/jobs/j"))[0] == "DEMO 010"
+        ticket(r, "work/tickets", "SIDE-003-astray", "SIDE 003 — astray", {})  # another system's prefix in DEMO's folder
+        ticket(r, "work/tickets", "DEMO-002-dup", "DEMO 002 — dup", {})
+        rc, out = run(r, QRISPY, "lint", "--repo")
+        assert rc == 1 and "FAIL  DEMO ticket folders are named DEMO-NNN-<slug>  (wrong prefix: SIDE-003-astray;" in out, out
+        assert "WARN  DEMO ticket numbers are unique  (002-beta, DEMO-002-dup)" in out, out  # the two forms share one numbering
+    finally:
+        shutil.rmtree(r)
 
 
 if __name__ == "__main__":

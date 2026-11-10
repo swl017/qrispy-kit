@@ -96,7 +96,7 @@ def main(argv):
             with open(sp, "w", encoding="utf-8") as f:
                 f.write(json.dumps(new, indent=2, ensure_ascii=False) + "\n")
     print(("# dry run: nothing written\n" if dry else "") + "\n".join(rep))
-    print(f"next: open a first ticket with the qrispy:ticket skill, or `mkdir {root}/001-<slug>`; check with `qrispy lint --repo`")
+    print(f"next: open a first ticket with the qrispy:ticket skill, or `mkdir {root}/{a.system}-001-<slug>`; check with `qrispy lint --repo`")
 
 
 if __name__ == "__main__":
