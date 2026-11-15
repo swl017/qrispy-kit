@@ -17,7 +17,7 @@ It was extracted from the repository of the RAL paper on active cooperative sens
 
 ## Install on a computer (once)
 
-Needs `git`, `python3` (3.8 or later) and the `claude` CLI on the login shell's PATH.
+Needs `git`, `python3` (3.8 or later) and the `claude` CLI on the login shell's PATH. The `qrispy:plan-page` skill also needs Node.js (for `npx`) and, for its layout screenshot, Google Chrome or Chromium; `install.py` lists both as optional rows (`NOTE` when missing, which does not fail the check) and does not install them. On macOS: `brew install node`, and Chrome in `/Applications` (the skill calls `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`, since macOS puts no `google-chrome` on PATH).
 
 ```bash
 git clone git@github.com:swl017/qrispy-kit.git ~/Code/qrispy-kit     # any folder; it is read in place
@@ -29,6 +29,17 @@ python3 ~/Code/qrispy-kit/install.py --install   # register the clone as a local
 Scopes follow the usual split: what protects every repository is set for the user, the workflow only where a repository asks for it. The guard hook (`python3 -I "<clone>/plugin/hooks/guard_git.py"`) and the deny rules go into `~/.claude/settings.json` and hold in every repository. The plugin is installed but turned off for the user; a repository turns it on in its own `.claude/settings.json` (`qrispy init` writes that line), so its skills and rules appear only there (checked by experiment; the record is in the RAL repository, ticket 090, `evidence/plugin_spike/r8_project_scope.txt`). `--install` backs up `~/.claude/settings.json` before changing it, and replaces an older registration of the guard (for example a copy in `~/.claude/hooks/`, which is kept as `.retired-<time>`). If the clone moves, run `install.py --install` again: the guard is registered by its path.
 
 **Updating**: `git pull` in the clone, then start a new session (an open session can run `/reload-plugins`). Claude Code reads a plugin installed from a local marketplace from the clone itself; it also keeps a copy under `~/.claude/plugins/cache/`, which it does not use (checked by experiment; the record is in the RAL repository, ticket 090, `y_slice_1.md` §2a).
+
+## Open a Lavish page yourself
+
+Lavish has no separate server to start: opening a page starts a local server in the background, which stops by itself when idle or after the last session ends.
+
+```bash
+npx -y lavish-axi@0.1.87 <ticket dir>/lavish/<name>.html   # prints http://127.0.0.1:<port>/…; open it in a browser
+npx -y lavish-axi@0.1.87 stop                              # stop the background server now
+```
+
+On the machine you sit at (for example a Mac), open the printed URL directly. When the agent runs on another machine and you reach it over a remote connection (VSCode Remote, SSH), forward the port first (VSCode: **Ports** panel, "Forward a Port"; SSH: `ssh -L <port>:127.0.0.1:<port> <host>`) and open `http://localhost:<port>/…`. Never use `lavish-axi share`: it publishes the page on a public third-party host.
 
 ## Set up a repository
 
@@ -58,6 +69,7 @@ for f in tests/test_*.py; do python3 -I "$f"; done
 | Machine | Saved output |
 |---|---|
 | macOS 27 (arm64), no `setsid(1)` | `tests/runs/macos-2026-11-05-hashfix.txt` (all nine test files, the tree of the commit that adds it); earlier runs belong to earlier trees: `macos-2026-11-05.txt` (S5), `macos-2026-11-05-rev1.txt` (the tree RAL ticket 090 rev2 reviewed), `macos-2026-11-05-rev2.txt` (`cd92e8a`) |
+| Linux work machine (host `usrg-sw-u20-Desktop`, Python 3.8), the tree that adds the optional Lavish prerequisite rows (npx, a headless Chrome) to `install.py` | `tests/runs/linux-2026-11-15-lavish-prereq.txt` (all ten test files); the macOS branch of those rows has not run on a Mac yet |
 | Linux work machine (host `usrg-sw-u20-Desktop`, Python 3.8), the tree that adds the outside-the-table warning (RAL ticket 090 Q-16) | `tests/runs/linux-2026-11-08-s11.txt` (all ten test files) |
 | Linux work machine (host `usrg-sw-u20-Desktop`, Python 3.8), the tree that adds the same-quantity check (RAL ticket 090 Q-15, `e0a7925`) | `tests/runs/linux-2026-11-07-s10.txt` (all ten test files) |
 | Linux work machine (host `usrg-sw-u20-Desktop`, Python 3.8), the tree that makes the cross-ticket citation check FAIL on unanswered items (RAL ticket 090 Q-14, `34d6ea0`) | `tests/runs/linux-2026-11-07-q14.txt` (all ten test files); the S8 tree before it (`2a6ec22`, warnings only): `linux-2026-11-07-s8.txt` |

@@ -15,9 +15,11 @@ KIT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GUARD_CMD = f'python3 -I "{os.path.join(KIT, "plugin", "hooks", "guard_git.py")}"'
 
 
-def install(home, *extra):
+def install(home, *extra, path=None):
     env = dict(os.environ)
     env.pop("CLAUDE_CONFIG_DIR", None)
+    if path is not None:
+        env["PATH"] = path
     p = subprocess.run([sys.executable, "-I", os.path.join(KIT, "install.py"), "--home", home, *extra], capture_output=True, text=True, env=env, stdin=subprocess.DEVNULL)
     return p.returncode, p.stdout + p.stderr
 
@@ -46,6 +48,24 @@ def test_install_replaces_the_old_guard_and_leaves_the_plugin_off_for_the_user()
         rc, out = install(home, "--install")  # a second run changes nothing and registers the guard once
         s2 = json.load(open(os.path.join(home, ".claude", "settings.json")))
         assert rc == 0 and [h["command"] for e in s2["hooks"]["PreToolUse"] for h in e["hooks"]] == [GUARD_CMD], s2
+        empty = os.path.join(home, "empty_bin")  # a PATH with no npx: the optional row says NOTE, the exit code stays 0
+        os.makedirs(empty)
+        rc, out = install(home, path=empty)
+        assert rc == 0 and "NOTE  npx on PATH" in out and "FAIL" not in out, out
+    finally:
+        shutil.rmtree(home)
+
+
+def test_optional_tools_are_notes_not_failures():
+    """Without npx on PATH the check prints a NOTE row with the install hint; no claude CLI needed (check only)."""
+    home = os.path.realpath(tempfile.mkdtemp(prefix="qrispy_install_opt_"))
+    try:
+        empty = os.path.join(home, "empty_bin")
+        os.makedirs(empty)
+        rc, out = install(home, path=empty)
+        npx_rows = [l for l in out.splitlines() if "npx on PATH" in l]
+        assert rc == 1 and len(npx_rows) == 1 and npx_rows[0].startswith("NOTE") and "Node.js" in npx_rows[0], out
+        assert "Chrome or Chromium" in out, out
     finally:
         shutil.rmtree(home)
 

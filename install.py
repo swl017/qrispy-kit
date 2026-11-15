@@ -9,6 +9,9 @@ kit's clone; to update later, `git pull` in the clone and start a new session (t
                                     ~/.local/bin/qrispy, and remove an older guard registration (RAL ticket 090 Q-10 C)
     python3 install.py --home DIR   act on DIR/.claude and DIR/.local/bin instead (tests)
 
+Both modes also list optional tools (npx for Lavish pages, a Chrome for headless screenshots) as PASS or NOTE; a NOTE
+never changes the exit code, and the installer does not install them.
+
 Settings files are backed up next to themselves (settings.json.bak-<time>) before any change.
 """
 import argparse
@@ -74,6 +77,30 @@ def check(home=None):
         ("no other guard registration beside this clone's", not old_hook_entries(s), "; ".join(h.get("command", "") for h in old_hook_entries(s))),
     ]
     return rows
+
+
+MAC_CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+
+
+def headless_browser():
+    """A Chrome or Chromium the plan-page skill can screenshot with: on PATH (Linux), or the macOS app bundle."""
+    for name in ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser"):
+        if shutil.which(name):
+            return shutil.which(name)
+    return MAC_CHROME if os.path.isfile(MAC_CHROME) else ""
+
+
+def optional():
+    """[(name, ok, detail)] for tools only some skills need; they never change the exit code."""
+    mac = sys.platform == "darwin"
+    npx = shutil.which("npx")
+    browser = headless_browser()
+    return [
+        ("npx on PATH (Lavish pages, the qrispy:plan-page skill)", bool(npx),
+         npx or ("install Node.js: brew install node" if mac else "install Node.js, which brings npx")),
+        ("Chrome or Chromium for headless screenshots (qrispy:plan-page)", bool(browser),
+         browser or ("install Google Chrome into /Applications" if mac else "install google-chrome or chromium")),
+    ]
 
 
 def backup(p):
@@ -153,6 +180,8 @@ def main(argv):
     rows = check(a.home)
     for name, ok, detail in rows:
         print(f"{'PASS' if ok else 'FAIL'}  {name}" + (f"  ({detail})" if detail else ""))
+    for name, ok, detail in optional():
+        print(f"{'PASS' if ok else 'NOTE'}  {name}" + (f"  ({detail})" if detail else ""))
     return 0 if all(ok for _, ok, _ in rows) else 1
 
 
